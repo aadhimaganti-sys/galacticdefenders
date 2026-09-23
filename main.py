@@ -197,11 +197,22 @@ def spinoff_game_loop():
                 pygame.draw.circle(VIRTUAL_SURFACE, YELLOW, sprite.rect.center, 3)
 
         if story_state == "DIALOGUE":
-            ui.draw_text(lvl_data["title"], FONT_LARGE, CYAN, SCREEN_WIDTH//2, 75, VIRTUAL_SURFACE)
+            title_rect = pygame.Rect(SCREEN_WIDTH // 2 - 250, 35, 500, 44)
+            pygame.draw.rect(VIRTUAL_SURFACE, (15, 20, 35), title_rect, border_radius=8)
+            pygame.draw.rect(VIRTUAL_SURFACE, CYAN, title_rect, 2, border_radius=8)
+            ui.draw_text(lvl_data["title"], FONT_LARGE, CYAN, SCREEN_WIDTH // 2, title_rect.centery, VIRTUAL_SURFACE)
+            
             if dialogue_idx < len(lvl_data["text"]):
-                ui.draw_text(lvl_data["text"][dialogue_idx], FONT_MEDIUM, WHITE, SCREEN_WIDTH//2, SCREEN_HEIGHT - 75, VIRTUAL_SURFACE)
+                box_w, box_h = min(850, SCREEN_WIDTH - 60), 90
+                box_rect = pygame.Rect(SCREEN_WIDTH // 2 - box_w // 2, SCREEN_HEIGHT - box_h - 30, box_w, box_h)
+                pygame.draw.rect(VIRTUAL_SURFACE, (10, 15, 25), box_rect, border_radius=10)
+                pygame.draw.rect(VIRTUAL_SURFACE, (50, 100, 160), box_rect, 2, border_radius=10)
+                
+                ui.draw_text("◆ INCOMING COMM TRANSMISSION ◆", FONT_SMALL, YELLOW, box_rect.left + 20, box_rect.top + 16, VIRTUAL_SURFACE, align="left")
+                ui.draw_text("[SPACE] Next", FONT_SMALL, LIGHT_GRAY, box_rect.right - 20, box_rect.top + 16, VIRTUAL_SURFACE, align="right")
+                ui.draw_text(lvl_data["text"][dialogue_idx], FONT_MEDIUM, WHITE, box_rect.centerx, box_rect.top + 52, VIRTUAL_SURFACE)
         elif story_state == "LEVEL_CLEAR":
-            ui.draw_text("SECTOR CLEARED", FONT_XLARGE, WIN_GREEN, SCREEN_WIDTH//2, SCREEN_HEIGHT//2, VIRTUAL_SURFACE)
+            ui.draw_text("SECTOR CLEARED", FONT_XLARGE, WIN_GREEN, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, VIRTUAL_SURFACE)
             level_timer += 1
             if level_timer > 90: 
                 c_level += 1
@@ -209,7 +220,7 @@ def spinoff_game_loop():
                 dialogue_idx = 0
                 level_timer = 0
         elif story_state == "GAME_OVER":
-            ui.draw_text("SYSTEM FAILURE", FONT_XLARGE, LOSE_RED, SCREEN_WIDTH//2, SCREEN_HEIGHT//2, VIRTUAL_SURFACE)
+            ui.draw_text("SYSTEM FAILURE", FONT_XLARGE, LOSE_RED, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, VIRTUAL_SURFACE)
 
         # --- 2.2 CAMERA RENDER PIPELINE ---
         if state.ACTIVE_HACKS.get("Force Screen Shake", False):
@@ -400,13 +411,21 @@ def ultimate_boss_loop():
                 pygame.draw.circle(VIRTUAL_SURFACE, YELLOW, sprite.rect.center, 3)
 
         if the_boss.alive():
-            pygame.draw.rect(VIRTUAL_SURFACE, RED, (SCREEN_WIDTH//2 - 300, 40, 600, 20))
-            pygame.draw.rect(VIRTUAL_SURFACE, WIN_GREEN, (SCREEN_WIDTH//2 - 300, 40, int(max(0, the_boss.health)/the_boss.max_health * 600), 20))
+            bar_w, bar_h = min(600, SCREEN_WIDTH - 80), 24
+            bx = SCREEN_WIDTH // 2 - bar_w // 2
+            by = 30
+            pygame.draw.rect(VIRTUAL_SURFACE, (40, 10, 15), (bx, by, bar_w, bar_h), border_radius=5)
+            pct = max(0.0, the_boss.health / the_boss.max_health)
+            fill_w = int(bar_w * pct)
+            if fill_w > 0:
+                pygame.draw.rect(VIRTUAL_SURFACE, (220, 20, 60), (bx, by, fill_w, bar_h), border_radius=5)
+            pygame.draw.rect(VIRTUAL_SURFACE, (255, 215, 0), (bx, by, bar_w, bar_h), 2, border_radius=5)
+            ui.draw_text(f"OMEGA OVERLORD HP: {int(pct*100)}%", FONT_SMALL, WHITE, SCREEN_WIDTH // 2, by + bar_h // 2, VIRTUAL_SURFACE)
                     
         if b_state == "LEVEL_CLEAR": 
-            ui.draw_text("OMEGA DEFEATED. YOU ARE A TRUE PILOT.", FONT_LARGE, WIN_GREEN, SCREEN_WIDTH//2, SCREEN_HEIGHT//2, VIRTUAL_SURFACE)
+            ui.draw_text("OMEGA DEFEATED. YOU ARE A TRUE PILOT.", FONT_LARGE, WIN_GREEN, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, VIRTUAL_SURFACE)
         elif b_state == "GAME_OVER": 
-            ui.draw_text("SYSTEM FAILURE", FONT_LARGE, LOSE_RED, SCREEN_WIDTH//2, SCREEN_HEIGHT//2, VIRTUAL_SURFACE)
+            ui.draw_text("SYSTEM FAILURE", FONT_LARGE, LOSE_RED, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, VIRTUAL_SURFACE)
 
         # --- 2.2 CAMERA RENDER PIPELINE ---
         if state.ACTIVE_HACKS.get("Force Screen Shake", False):
@@ -517,10 +536,21 @@ def game_loop(current_mode):
                 if net_state.get("bo"):
                     bo = net_state["bo"]
                     pygame.draw.rect(VIRTUAL_SURFACE, BOSS_COLOR, (bo["x"], bo["y"], 200, 150), border_radius=15)
-                    pygame.draw.rect(VIRTUAL_SURFACE, RED, (SCREEN_WIDTH//2 - 100, 20, 200, 20))
-                    pygame.draw.rect(VIRTUAL_SURFACE, WIN_GREEN, (SCREEN_WIDTH//2 - 100, 20, int(max(0, bo["h"])/bo["m"] * 200), 20))
+                    bar_w, bar_h = 360, 20
+                    bx = SCREEN_WIDTH // 2 - bar_w // 2
+                    by = 48
+                    pygame.draw.rect(VIRTUAL_SURFACE, (40, 10, 15), (bx, by, bar_w, bar_h), border_radius=4)
+                    pct = max(0.0, bo["h"] / bo["m"]) if bo["m"] > 0 else 0.0
+                    fill_w = int(bar_w * pct)
+                    if fill_w > 0:
+                        pygame.draw.rect(VIRTUAL_SURFACE, (220, 30, 30), (bx, by, fill_w, bar_h), border_radius=4)
+                    pygame.draw.rect(VIRTUAL_SURFACE, (255, 200, 50), (bx, by, bar_w, bar_h), 2, border_radius=4)
+                    ui.draw_text(f"BOSS HP: {int(pct*100)}%", FONT_SMALL, WHITE, SCREEN_WIDTH // 2, by + bar_h // 2, VIRTUAL_SURFACE)
 
-                ui.draw_text(f"Level: {net_state.get('l', 1)}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH//2, 55, VIRTUAL_SURFACE)
+                ui.draw_text(f"SECTOR {net_state.get('l', 1)}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, 22, VIRTUAL_SURFACE)
+                ui.draw_text(f"P1 Score: {net_state.get('p1', {}).get('s', 0)}", FONT_MEDIUM, PLAYER_COLORS[0], 25, 22, VIRTUAL_SURFACE, align="left")
+                if "p2" in net_state:
+                    ui.draw_text(f"P2 Score: {net_state['p2'].get('s', 0)}", FONT_MEDIUM, PLAYER_COLORS[1], SCREEN_WIDTH - 25, 22, VIRTUAL_SURFACE, align="right")
 
                 if state.ACTIVE_HACKS.get("Force Screen Shake", False):
                     state.CAMERA_SHAKE = 20
@@ -796,11 +826,22 @@ def game_loop(current_mode):
                 pygame.draw.circle(VIRTUAL_SURFACE, YELLOW, sprite.rect.center, 3)
 
         if boss:
-            pygame.draw.rect(VIRTUAL_SURFACE, RED, (SCREEN_WIDTH//2 - 100, 20, 200, 20))
-            pygame.draw.rect(VIRTUAL_SURFACE, WIN_GREEN, (SCREEN_WIDTH//2 - 100, 20, int(max(0, boss.health)/boss.max_health * 200), 20))
+            bar_w, bar_h = 360, 20
+            bx = SCREEN_WIDTH // 2 - bar_w // 2
+            by = 48
+            pygame.draw.rect(VIRTUAL_SURFACE, (40, 10, 15), (bx, by, bar_w, bar_h), border_radius=4)
+            pct = max(0.0, boss.health / boss.max_health)
+            fill_w = int(bar_w * pct)
+            if fill_w > 0:
+                pygame.draw.rect(VIRTUAL_SURFACE, (220, 30, 30), (bx, by, fill_w, bar_h), border_radius=4)
+            pygame.draw.rect(VIRTUAL_SURFACE, (255, 200, 50), (bx, by, bar_w, bar_h), 2, border_radius=4)
+            ui.draw_text(f"BOSS HP: {int(pct*100)}%", FONT_SMALL, WHITE, SCREEN_WIDTH // 2, by + bar_h // 2, VIRTUAL_SURFACE)
 
-        ui.draw_text(f"P1 Score: {players[1].score}", FONT_MEDIUM, PLAYER_COLORS[0], 120, 20, VIRTUAL_SURFACE)
-        ui.draw_text(f"Level: {state.level}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, 55, VIRTUAL_SURFACE)
+        ui.draw_text(f"SECTOR {state.level}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, 22, VIRTUAL_SURFACE)
+        if 1 in players:
+            ui.draw_text(f"P1 Score: {players[1].score}", FONT_MEDIUM, PLAYER_COLORS[0], 25, 22, VIRTUAL_SURFACE, align="left")
+        if 2 in players:
+            ui.draw_text(f"P2 Score: {players[2].score}", FONT_MEDIUM, PLAYER_COLORS[1], SCREEN_WIDTH - 25, 22, VIRTUAL_SURFACE, align="right")
         
         # --- 2.2 CAMERA RENDER PIPELINE ---
         if state.ACTIVE_HACKS.get("Force Screen Shake", False):

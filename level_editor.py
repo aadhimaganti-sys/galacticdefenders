@@ -198,12 +198,17 @@ def run_level_editor(screen):
         {"id": 0, "name": "Eraser", "color": DARK_GRAY}
     ]
 
-    ui_panel = pygame.Rect(0, SCREEN_HEIGHT - 120, SCREEN_WIDTH, 120)
-    save_btn = pygame.Rect(SCREEN_WIDTH - 220, SCREEN_HEIGHT - 100, 200, 40)
-    load_btn = pygame.Rect(SCREEN_WIDTH - 220, SCREEN_HEIGHT - 50, 200, 40)
-    play_btn = pygame.Rect(SCREEN_WIDTH - 440, SCREEN_HEIGHT - 100, 200, 80)
-    exit_btn = pygame.Rect(20, SCREEN_HEIGHT - 100, 150, 80)
+    ui_panel = pygame.Rect(0, SCREEN_HEIGHT - 110, SCREEN_WIDTH, 110)
+    exit_btn = pygame.Rect(15, SCREEN_HEIGHT - 95, 100, 80)
+    play_btn = pygame.Rect(SCREEN_WIDTH - 360, SCREEN_HEIGHT - 95, 160, 80)
+    save_btn = pygame.Rect(SCREEN_WIDTH - 180, SCREEN_HEIGHT - 95, 165, 36)
+    load_btn = pygame.Rect(SCREEN_WIDTH - 180, SCREEN_HEIGHT - 52, 165, 36)
     msg, msg_timer = "", 0
+
+    tool_w = 80
+    tool_h = 70
+    tool_gap = 10
+    tool_start_x = 130
 
     while True:
         mouse_pos = pygame.mouse.get_pos()
@@ -260,7 +265,8 @@ def run_level_editor(screen):
                         sound_manager.play_sfx("game_over", 0.4)
                         
                 for i, t in enumerate(tools):
-                    if pygame.Rect(200 + (i * 160), SCREEN_HEIGHT - 90, 140, 60).collidepoint(mouse_pos): 
+                    tr = pygame.Rect(tool_start_x + (i * (tool_w + tool_gap)), SCREEN_HEIGHT - 90, tool_w, tool_h)
+                    if tr.collidepoint(mouse_pos): 
                         current_tool = t["id"]
                         sound_manager.play_sfx("ui_click")
 
@@ -294,30 +300,31 @@ def run_level_editor(screen):
 
         # Bottom UI
         pygame.draw.rect(screen, (20, 20, 30), ui_panel)
-        pygame.draw.line(screen, CYAN, (0, ui_panel.top), (SCREEN_WIDTH, ui_panel.top), 3)
+        pygame.draw.line(screen, CYAN, (0, ui_panel.top), (SCREEN_WIDTH, ui_panel.top), 2)
         
         pygame.draw.rect(screen, (150, 0, 0), exit_btn, border_radius=8)
         ui.draw_text("EXIT", FONT_LARGE, WHITE, exit_btn.centerx, exit_btn.centery, screen)
         
         pygame.draw.rect(screen, WIN_GREEN, play_btn, border_radius=8)
-        ui.draw_text("▶ PLAYTEST", FONT_LARGE, BLACK, play_btn.centerx, play_btn.centery, screen)
+        ui.draw_text("▶ TEST", FONT_LARGE, BLACK, play_btn.centerx, play_btn.centery, screen)
         
         pygame.draw.rect(screen, BUTTON_COLOR, save_btn, border_radius=5)
-        ui.draw_text("SAVE LEVEL", FONT_MEDIUM, WHITE, save_btn.centerx, save_btn.centery, screen)
+        ui.draw_text("SAVE LEVEL", FONT_SMALL, WHITE, save_btn.centerx, save_btn.centery, screen)
         
         pygame.draw.rect(screen, BUTTON_COLOR, load_btn, border_radius=5)
-        ui.draw_text("LOAD LEVEL", FONT_MEDIUM, WHITE, load_btn.centerx, load_btn.centery, screen)
+        ui.draw_text("LOAD LEVEL", FONT_SMALL, WHITE, load_btn.centerx, load_btn.centery, screen)
 
         for i, t in enumerate(tools):
-            tr = pygame.Rect(200 + (i * 160), SCREEN_HEIGHT - 90, 140, 60)
-            pygame.draw.rect(screen, t["color"] if current_tool == t["id"] else (t["color"][0]//3, t["color"][1]//3, t["color"][2]//3), tr, border_radius=5)
-            if current_tool == t["id"]: 
-                pygame.draw.rect(screen, WHITE, tr, 3, border_radius=5)
+            tr = pygame.Rect(tool_start_x + (i * (tool_w + tool_gap)), SCREEN_HEIGHT - 90, tool_w, tool_h)
+            is_active = (current_tool == t["id"])
+            col = t["color"] if is_active else (t["color"][0]//3, t["color"][1]//3, t["color"][2]//3)
+            pygame.draw.rect(screen, col, tr, border_radius=6)
+            pygame.draw.rect(screen, WHITE if is_active else (60, 70, 90), tr, 2 if is_active else 1, border_radius=6)
             ui.draw_text(t["name"], FONT_SMALL, WHITE, tr.centerx, tr.centery, screen)
 
         if msg and pygame.time.get_ticks() - msg_timer < 2000: 
-            ui.draw_text(msg, FONT_MEDIUM, WIN_GREEN if "!" in msg else RED, save_btn.centerx, save_btn.top - 20, screen)
+            ui.draw_text(msg, FONT_SMALL, WIN_GREEN if "!" in msg else RED, save_btn.centerx, save_btn.top - 12, screen)
             
-        ui.draw_megahack(screen)
+        megahack.draw(screen)
         pygame.display.flip()
         clock.tick(int(FPS * state.GAME_SPEED))
