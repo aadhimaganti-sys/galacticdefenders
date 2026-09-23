@@ -10,13 +10,22 @@ import sound_manager
 stars = [[random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT), random.uniform(1, 4)] for _ in range(100)]
 
 def draw_text(text, font, color, x, y, surface, align="center"):
-    text_surface = font.render(text, True, color)
+    text_surface = font.render(str(text), True, color)
     rect = text_surface.get_rect()
     if align == "center":
         rect.center = (x, y)
     elif align == "left":
         rect.midleft = (x, y)
+    elif align == "right":
+        rect.midright = (x, y)
+    elif align == "topleft":
+        rect.topleft = (x, y)
+    elif align == "topright":
+        rect.topright = (x, y)
+    elif align == "midtop":
+        rect.midtop = (x, y)
     surface.blit(text_surface, rect)
+    return rect
 
 def draw_stars(surface):
     for s in stars:
@@ -28,15 +37,16 @@ def draw_stars(surface):
 
 def draw_scrollable_menu(screen, options, offset, mouse_pos, title, font_t, color_t, y_t, currency=None):
     screen.fill(BLACK)
+    draw_stars(screen)
     draw_text(title, font_t, color_t, SCREEN_WIDTH // 2, y_t, screen)
     if currency:
-        draw_text(currency, FONT_MEDIUM, WHITE, SCREEN_WIDTH - 250, 40, screen)
+        draw_text(currency, FONT_MEDIUM, YELLOW, SCREEN_WIDTH - 250, y_t, screen, align="right")
         
     for opt in options:
         r = opt["rect"].copy()
         r.centery = opt["original_y"] + offset
         
-        if r.bottom > y_t + 50 and r.top < SCREEN_HEIGHT - 120:
+        if r.bottom > y_t + 50 and r.top < SCREEN_HEIGHT - 100:
             color = opt.get("override_color", BUTTON_COLOR)
             if r.collidepoint(mouse_pos) and not opt.get("is_owned", False):
                 color = BUTTON_HOVER_COLOR
@@ -44,38 +54,55 @@ def draw_scrollable_menu(screen, options, offset, mouse_pos, title, font_t, colo
                 color = BUTTON_DISABLED_COLOR
                 
             pygame.draw.rect(screen, color, r, border_radius=10)
+            pygame.draw.rect(screen, (80, 100, 140), r, 2, border_radius=10)
             draw_text(opt["text"], FONT_MEDIUM, WHITE, r.centerx, r.centery, screen)
             if "desc" in opt:
                 draw_text(opt["desc"], FONT_SMALL, LIGHT_GRAY, r.centerx, r.centery + 20, screen)
 
 def show_home_screen(screen, clock):
     selected_p1 = state.SHIP_TYPES.get(state.all_player_data["P1"]["selected_ship"], BASE_SHIP_TYPES["default_jet"])["name"]
+    credits_p1 = state.all_player_data["P1"]["credits"]
     
-    button_options = [
-        {"text": "Single Player (Classic)", "action": "PLAYING_SINGLE_CLASSIC", "rect": None},
-        {"text": "Single Player (Boss Mode)", "action": "PLAYING_SINGLE_BOSS", "rect": None},
-        {"text": "Local Multiplayer", "action": "PLAYING_MULTI_CLASSIC", "rect": None},
-        {"text": "Local Multiplayer (Boss Mode)", "action": "PLAYING_MULTI_BOSS", "rect": None},
-        {"text": "??? PLAY STORY CAMPAIGN ???", "action": "PLAYING_SPINOFF", "rect": None, "override_color": (180, 0, 80)},
-        {"text": "ENTER SECRET PROTOCOL", "action": "PASSWORD_SCREEN", "rect": None, "override_color": (100, 0, 0)},
-        {"text": "Host LAN Game", "action": "HOST_LAN_MENU", "rect": None},
-        {"text": "Join LAN Game", "action": "JOIN_LAN_MENU", "rect": None},
-        {"text": "Host GLOBAL Cloud Game", "action": "HOST_CLOUD", "rect": None, "override_color": (100, 0, 150)},
-        {"text": "Join GLOBAL Cloud Game", "action": "JOIN_CLOUD", "rect": None, "override_color": (100, 0, 150)},
-        {"text": "Galactic Web Browser", "action": "WEB_BROWSER", "rect": None, "override_color": (0, 100, 100)},
-        {"text": "Store / Armory (P1)", "action": "STORE_P1", "rect": None},
-        {"text": "Select Ship (P1)", "action": "SELECT_SHIP_P1", "rect": None},
-        {"text": "🔊 Audio & Music Settings", "action": "AUDIO_SETTINGS", "rect": None, "override_color": (30, 80, 140)},
-        {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "rect": None},
-        {"text": "GUI Level Architect", "action": "LEVEL_EDITOR", "rect": None, "override_color": (0, 120, 60)},
-        {"text": "Quit Game", "action": "QUIT_PROGRAM", "rect": None},
+    col1_options = [
+        {"text": "Single Player (Classic)", "action": "PLAYING_SINGLE_CLASSIC", "color": (30, 80, 140)},
+        {"text": "Single Player (Boss Mode)", "action": "PLAYING_SINGLE_BOSS", "color": (140, 40, 60)},
+        {"text": "Local Co-op (Classic)", "action": "PLAYING_MULTI_CLASSIC", "color": (40, 100, 120)},
+        {"text": "Local Co-op (Boss Mode)", "action": "PLAYING_MULTI_BOSS", "color": (120, 40, 90)},
+        {"text": "??? STORY CAMPAIGN ???", "action": "PLAYING_SPINOFF", "color": (180, 0, 80)},
+        {"text": "ENTER SECRET PROTOCOL", "action": "PASSWORD_SCREEN", "color": (100, 0, 0)},
+    ]
+    
+    col2_options = [
+        {"text": "Host LAN Game", "action": "HOST_LAN_MENU", "color": (40, 90, 130)},
+        {"text": "Join LAN Game", "action": "JOIN_LAN_MENU", "color": (40, 90, 130)},
+        {"text": "Host GLOBAL Cloud", "action": "HOST_CLOUD", "color": (100, 0, 150)},
+        {"text": "Join GLOBAL Cloud", "action": "JOIN_CLOUD", "color": (100, 0, 150)},
+        {"text": "Galactic Web Browser", "action": "WEB_BROWSER", "color": (0, 100, 100)},
+        {"text": "Store / Armory (P1)", "action": "STORE_P1", "color": (60, 110, 50)},
+        {"text": "Select Ship (P1)", "action": "SELECT_SHIP_P1", "color": (70, 90, 120)},
+        {"text": "🔊 Audio & Music Settings", "action": "AUDIO_SETTINGS", "color": (30, 80, 140)},
+        {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "color": (110, 60, 120)},
+        {"text": "GUI Level Architect", "action": "LEVEL_EDITOR", "color": (0, 120, 60)},
+        {"text": "Quit Game", "action": "QUIT_PROGRAM", "color": (120, 30, 30)},
     ]
 
-    button_w, button_h, pad = 340, 34, 5
-    y_start = SCREEN_HEIGHT // 2 - (len(button_options) * (button_h + pad)) // 2 + 30
+    button_w = 340
+    button_h = 38
+    pad_y = 8
+    
+    center_x = SCREEN_WIDTH // 2
+    col1_x = center_x - button_w - 20
+    col2_x = center_x + 20
+    
+    y_start = 175
 
-    for i, opt in enumerate(button_options): 
-        opt["rect"] = pygame.Rect(SCREEN_WIDTH // 2 - button_w // 2, y_start + i * (button_h + pad), button_w, button_h)
+    for i, opt in enumerate(col1_options):
+        opt["rect"] = pygame.Rect(col1_x, y_start + i * (button_h + pad_y), button_w, button_h)
+
+    for i, opt in enumerate(col2_options):
+        opt["rect"] = pygame.Rect(col2_x, y_start + i * (button_h + pad_y), button_w, button_h)
+
+    all_buttons = col1_options + col2_options
 
     while True:
         mouse_pos = pygame.mouse.get_pos()
@@ -86,7 +113,7 @@ def show_home_screen(screen, clock):
                 continue
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                for opt in button_options:
+                for opt in all_buttons:
                     if opt["rect"].collidepoint(mouse_pos):
                         sound_manager.play_sfx("ui_click")
                         return opt["action"]
@@ -101,13 +128,31 @@ def show_home_screen(screen, clock):
         screen.fill(BLACK)
         draw_stars(screen)
         
-        draw_text("GALACTIC DEFENDER", FONT_XLARGE, CYAN, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4 - 60, screen)
-        draw_text(f"P1 Credits: {state.all_player_data['P1']['credits']} | Ship: {selected_p1}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4 + 20, screen)
+        # Header & Title
+        draw_text("GALACTIC DEFENDERS", FONT_XLARGE, CYAN, center_x, 50, screen)
         
-        for opt in button_options:
-            c = BUTTON_HOVER_COLOR if opt["rect"].collidepoint(mouse_pos) else opt.get("override_color", BUTTON_COLOR)
-            pygame.draw.rect(screen, c, opt["rect"], border_radius=10)
+        # Pilot Status Badge
+        badge_w = 560
+        badge_rect = pygame.Rect(center_x - badge_w // 2, 92, badge_w, 36)
+        pygame.draw.rect(screen, (20, 25, 40), badge_rect, border_radius=18)
+        pygame.draw.rect(screen, (60, 90, 140), badge_rect, 2, border_radius=18)
+        draw_text(f"PILOT: P1   |   CREDITS: {credits_p1} Cr   |   SHIP: {selected_p1}", FONT_MEDIUM, YELLOW, center_x, 110, screen)
+        
+        # Column Headers
+        draw_text("─── MISSION SELECT ───", FONT_SMALL, (150, 180, 220), col1_x + button_w // 2, y_start - 20, screen)
+        draw_text("─── NETWORK & HANGAR ───", FONT_SMALL, (150, 180, 220), col2_x + button_w // 2, y_start - 20, screen)
+        
+        # Draw Buttons
+        for opt in all_buttons:
+            is_hover = opt["rect"].collidepoint(mouse_pos)
+            base_col = opt.get("color", BUTTON_COLOR)
+            c = BUTTON_HOVER_COLOR if is_hover else base_col
+            pygame.draw.rect(screen, c, opt["rect"], border_radius=8)
+            pygame.draw.rect(screen, (200, 220, 255) if is_hover else (60, 70, 90), opt["rect"], 2 if is_hover else 1, border_radius=8)
             draw_text(opt["text"], FONT_MEDIUM, WHITE, opt["rect"].centerx, opt["rect"].centery, screen)
+
+        # Bottom shortcut info
+        draw_text("Press TAB for MegaHack Menu  |  F12 Developer Console  |  ESC Quit", FONT_SMALL, (120, 130, 150), center_x, SCREEN_HEIGHT - 25, screen)
 
         megahack.draw(screen)
         pygame.display.flip()
@@ -391,8 +436,9 @@ def show_web_browser_screen(screen, clock):
         pygame.draw.rect(screen, DARK_GRAY, pygame.Rect(bx + 10, by + 5, 60, 30), border_radius=4)
         draw_text("HOME", FONT_SMALL, WHITE, bx + 40, by + 20, screen)
         
-        pygame.draw.rect(screen, WHITE, (bx + 80, by + 5, browser_w - 130, 30), border_radius=4)
-        draw_text(current_url, FONT_SMALL, BLACK, bx + 100 + len(current_url)*4, by + 20, screen)
+        url_bar_rect = pygame.Rect(bx + 80, by + 5, browser_w - 130, 30)
+        pygame.draw.rect(screen, WHITE, url_bar_rect, border_radius=4)
+        draw_text(current_url, FONT_SMALL, BLACK, url_bar_rect.left + 10, url_bar_rect.centery, screen, align="left")
         
         pygame.draw.rect(screen, RED, pygame.Rect(bx + browser_w - 40, by + 5, 30, 30), border_radius=4)
         draw_text("X", FONT_SMALL, WHITE, bx + browser_w - 25, by + 20, screen)
@@ -400,27 +446,30 @@ def show_web_browser_screen(screen, clock):
         # Page Content
         if current_url == "http://galactic.net/home":
             draw_text("GALACTIC WEB PORTAL", FONT_LARGE, CYAN, bx + browser_w//2, by + 120, screen)
-            link1, link2, link3 = pygame.Rect(bx+250, by+250, 400, 50), pygame.Rect(bx+250, by+320, 400, 50), pygame.Rect(bx+250, by+390, 400, 50)
+            link1, link2, link3 = pygame.Rect(bx+250, by+230, 400, 50), pygame.Rect(bx+250, by+300, 400, 50), pygame.Rect(bx+250, by+370, 400, 50)
             for r, t, col in [(link1, "▶ Darknet: MegaHack v7", MAGENTA), (link2, "▶ Black Market Shipyard", ORANGE), (link3, "▶ Bounty Board", YELLOW)]:
                 pygame.draw.rect(screen, (50, 50, 80), r, border_radius=8)
+                pygame.draw.rect(screen, (80, 80, 120), r, 2, border_radius=8)
                 draw_text(t, FONT_MEDIUM, col, r.centerx, r.centery, screen)
                 
         elif current_url == "http://darknet.galactic/megahack":
             draw_text("◆ MEGAHACK RUNTIME INJECTOR ◆", FONT_LARGE, MAGENTA, bx + browser_w//2, by + 150, screen)
             dl_btn = pygame.Rect(bx+300, by+350, 300, 60)
             pygame.draw.rect(screen, BUTTON_DISABLED_COLOR, dl_btn, border_radius=10)
+            pygame.draw.rect(screen, (100, 100, 120), dl_btn, 2, border_radius=10)
             draw_text("UNLOCKED BY DEFAULT - Press TAB", FONT_MEDIUM, WIN_GREEN, dl_btn.centerx, dl_btn.centery, screen)
                 
         elif current_url == "http://galactic.net/shipyard":
             draw_text("BLACK MARKET SHIPYARD", FONT_LARGE, ORANGE, bx + browser_w//2, by + 150, screen)
             buy_btn = pygame.Rect(bx+250, by+300, 400, 80)
             pygame.draw.rect(screen, BUTTON_COLOR, buy_btn, border_radius=10)
+            pygame.draw.rect(screen, (120, 140, 180), buy_btn, 2, border_radius=10)
             msg = "OWNED" if "shadow_wraith" in state.all_player_data["P1"]["owned_ships"] else "BUY 'SHADOW WRAITH' - 8000 Cr"
             draw_text(msg, FONT_MEDIUM, WHITE, buy_btn.centerx, buy_btn.centery, screen)
             
         elif current_url == "http://galactic.net/bounties":
             draw_text("BOUNTY BOARD", FONT_LARGE, YELLOW, bx + browser_w//2, by + 150, screen)
-            draw_text("Bounties currently disabled by Galactic Police.", FONT_MEDIUM, RED, bx + browser_w//2, by + 300, screen)
+            draw_text("Bounties currently disabled by Galactic Federation.", FONT_MEDIUM, RED, bx + browser_w//2, by + 300, screen)
 
         megahack.draw(screen)
         pygame.display.flip()
@@ -555,7 +604,7 @@ def show_audio_settings_screen(screen, clock):
             minus_r, bar_r, plus_r = vol_rects[vkey]
             cur_val = state.audio_settings.get(vkey, 1.0)
             
-            # Label
+            # Label (using align='right' correctly!)
             draw_text(labels[idx], FONT_MEDIUM, WHITE, minus_r.left - 20, minus_r.centery, screen, align="right")
             
             # Minus button
@@ -609,41 +658,137 @@ def show_audio_settings_screen(screen, clock):
         clock.tick(int(FPS * state.GAME_SPEED))
 
 def show_instructions_screen(screen, clock, mode):
-    screen.fill(BLACK)
-    draw_stars(screen)
-    draw_text("MISSION BRIEFING", FONT_LARGE, YELLOW, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4, screen)
-    draw_text("Player 1: WASD Move, SPACE Shoot", FONT_MEDIUM, WHITE, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 60, screen)
-    if "MULTI" in mode or "LAN" in mode or "CLOUD" in mode:
-        draw_text("Player 2: Arrows Move, ENTER Shoot", FONT_MEDIUM, WHITE, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 20, screen)
-    draw_text("Press any key to start.", FONT_SMALL, LIGHT_GRAY, SCREEN_WIDTH // 2, SCREEN_HEIGHT * 0.85, screen)
-    pygame.display.flip()
+    center_x = SCREEN_WIDTH // 2
+    center_y = SCREEN_HEIGHT // 2
     
-    waiting = True
-    while waiting:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT: 
-                sys.exit()
-            if event.type == pygame.KEYDOWN: 
-                sound_manager.play_sfx("ui_click")
-                waiting = False
-        clock.tick(FPS)
+    card_w = 640
+    card_h = 380
+    card_rect = pygame.Rect(center_x - card_w // 2, center_y - card_h // 2, card_w, card_h)
+    
+    start_btn = pygame.Rect(center_x - 140, card_rect.bottom - 70, 280, 45)
 
-def show_game_over_screen(screen, clock, did_win_game, winner_id=0):
-    screen.fill(BLACK)
-    draw_stars(screen)
-    draw_text("Victory!" if did_win_game else "Game Over", FONT_XLARGE, WIN_GREEN if did_win_game else LOSE_RED, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 3, screen)
-    draw_text(f"P1 Score: {state.score_p1}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 20, screen)
-    draw_text("Press 'H' to go Home or 'Q' to Quit", FONT_MEDIUM, WHITE, SCREEN_WIDTH // 2, SCREEN_HEIGHT * 0.85, screen)
-    pygame.display.flip()
-    
     while True:
+        mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT: 
                 return "QUIT_PROGRAM"
+            if megahack.handle_event(event): 
+                continue
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if start_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    return
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_h: 
+                if event.key in [pygame.K_SPACE, pygame.K_RETURN, pygame.K_ESCAPE]:
+                    sound_manager.play_sfx("ui_click")
+                    return
+
+        screen.fill(BLACK)
+        draw_stars(screen)
+        
+        # Briefing Card
+        pygame.draw.rect(screen, (20, 25, 35), card_rect, border_radius=12)
+        pygame.draw.rect(screen, CYAN, card_rect, 2, border_radius=12)
+        
+        draw_text("MISSION BRIEFING", FONT_LARGE, YELLOW, center_x, card_rect.top + 40, screen)
+        draw_text(f"Mode: {mode.replace('PLAYING_', '').replace('_', ' ')}", FONT_SMALL, (160, 190, 220), center_x, card_rect.top + 75, screen)
+        
+        # Player 1 controls
+        p1_box = pygame.Rect(center_x - 280, card_rect.top + 105, 560, 50)
+        pygame.draw.rect(screen, (30, 40, 60), p1_box, border_radius=8)
+        draw_text("PILOT 1:", FONT_MEDIUM, CYAN, p1_box.left + 70, p1_box.centery, screen)
+        draw_text("[W][A][S][D] Move   |   [SPACE] Shoot", FONT_MEDIUM, WHITE, p1_box.left + 330, p1_box.centery, screen)
+        
+        # Player 2 controls (if multiplayer)
+        if "MULTI" in mode or "LAN" in mode or "CLOUD" in mode:
+            p2_box = pygame.Rect(center_x - 280, card_rect.top + 165, 560, 50)
+            pygame.draw.rect(screen, (40, 30, 50), p2_box, border_radius=8)
+            draw_text("PILOT 2:", FONT_MEDIUM, MAGENTA, p2_box.left + 70, p2_box.centery, screen)
+            draw_text("[ARROWS] Move   |   [ENTER] Shoot", FONT_MEDIUM, WHITE, p2_box.left + 330, p2_box.centery, screen)
+        else:
+            tip_box = pygame.Rect(center_x - 280, card_rect.top + 165, 560, 50)
+            pygame.draw.rect(screen, (30, 35, 45), tip_box, border_radius=8)
+            draw_text("Collect glowing power-ups for Shields and Triple Blasters!", FONT_SMALL, (180, 210, 240), tip_box.centerx, tip_box.centery, screen)
+
+        # Launch Button
+        is_hover = start_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if is_hover else WIN_GREEN, start_btn, border_radius=8)
+        draw_text("LAUNCH MISSION", FONT_MEDIUM, BLACK if not is_hover else WHITE, start_btn.centerx, start_btn.centery, screen)
+
+        draw_text("Press SPACE or Click Launch to Begin", FONT_SMALL, LIGHT_GRAY, center_x, card_rect.bottom + 25, screen)
+
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))
+
+def show_game_over_screen(screen, clock, did_win_game, winner_id=0):
+    center_x = SCREEN_WIDTH // 2
+    center_y = SCREEN_HEIGHT // 2
+    
+    card_w = 600
+    card_h = 380
+    card_rect = pygame.Rect(center_x - card_w // 2, center_y - card_h // 2, card_w, card_h)
+    
+    home_btn = pygame.Rect(center_x - 220, card_rect.bottom - 65, 200, 45)
+    quit_btn = pygame.Rect(center_x + 20, card_rect.bottom - 65, 200, 45)
+
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: 
+                return "QUIT_PROGRAM"
+            if megahack.handle_event(event): 
+                continue
+                
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if home_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    return "HOME"
+                elif quit_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    return "QUIT_PROGRAM"
+                    
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_h, pygame.K_SPACE, pygame.K_RETURN, pygame.K_ESCAPE]: 
                     sound_manager.play_sfx("ui_click")
                     return "HOME"
                 elif event.key == pygame.K_q: 
                     return "QUIT_PROGRAM"
-        clock.tick(FPS)
+
+        screen.fill(BLACK)
+        draw_stars(screen)
+        
+        # Summary Card
+        card_border_color = WIN_GREEN if did_win_game else LOSE_RED
+        pygame.draw.rect(screen, (20, 22, 32), card_rect, border_radius=12)
+        pygame.draw.rect(screen, card_border_color, card_rect, 2, border_radius=12)
+        
+        # Title
+        title_text = "VICTORY ACHIEVED!" if did_win_game else "MISSION FAILED"
+        draw_text(title_text, FONT_XLARGE, card_border_color, center_x, card_rect.top + 45, screen)
+        
+        # Stats
+        stats_y = card_rect.top + 105
+        stat_box1 = pygame.Rect(center_x - 240, stats_y, 480, 40)
+        pygame.draw.rect(screen, (30, 35, 50), stat_box1, border_radius=6)
+        draw_text(f"P1 Final Score: {state.score_p1}", FONT_MEDIUM, YELLOW, stat_box1.centerx, stat_box1.centery, screen)
+        
+        if state.score_p2 > 0:
+            stat_box2 = pygame.Rect(center_x - 240, stats_y + 48, 480, 40)
+            pygame.draw.rect(screen, (30, 35, 50), stat_box2, border_radius=6)
+            draw_text(f"P2 Final Score: {state.score_p2}", FONT_MEDIUM, MAGENTA, stat_box2.centerx, stat_box2.centery, screen)
+            
+        sector_box = pygame.Rect(center_x - 240, stats_y + (96 if state.score_p2 > 0 else 48), 480, 40)
+        pygame.draw.rect(screen, (30, 35, 50), sector_box, border_radius=6)
+        draw_text(f"Sector Reached: {state.level}", FONT_MEDIUM, CYAN, sector_box.centerx, sector_box.centery, screen)
+        
+        # Action Buttons
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if home_btn.collidepoint(mouse_pos) else BUTTON_COLOR, home_btn, border_radius=8)
+        draw_text("Return to Home (H)", FONT_MEDIUM, WHITE, home_btn.centerx, home_btn.centery, screen)
+        
+        pygame.draw.rect(screen, (150, 40, 40) if quit_btn.collidepoint(mouse_pos) else (110, 30, 30), quit_btn, border_radius=8)
+        draw_text("Quit Game (Q)", FONT_MEDIUM, WHITE, quit_btn.centerx, quit_btn.centery, screen)
+        
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))
