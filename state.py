@@ -1,4 +1,7 @@
 import json
+
+# Current logged-in user (set by login_flow)
+current_user = None
 import os
 from settings import *
 
@@ -62,6 +65,32 @@ DEFAULT_PLAYER_DATA = {
     "unlocked_powers": ["power_autoshield"], 
     "has_downloaded_cheat_menu": False,
 }
+
+# --- Audio Settings ---
+audio_settings = {
+    "master_volume": 1.0,
+    "sfx_volume": 0.8,
+    "music_volume": 0.7,
+    "sfx_muted": False,
+    "music_muted": False,
+}
+
+def load_audio_config():
+    global audio_settings
+    try:
+        if os.path.exists(AUDIO_CONFIG_FILE):
+            with open(AUDIO_CONFIG_FILE, "r") as f:
+                loaded = json.load(f)
+                audio_settings.update(loaded)
+    except Exception:
+        pass
+
+def save_audio_config():
+    try:
+        with open(AUDIO_CONFIG_FILE, "w") as f:
+            json.dump(audio_settings, f, indent=4)
+    except Exception:
+        pass
 
 all_player_data = {"P1": dict(DEFAULT_PLAYER_DATA), "P2": dict(DEFAULT_PLAYER_DATA)}
 

@@ -5,6 +5,7 @@ import sys
 from settings import *
 import state
 import megahack
+import sound_manager
 
 stars = [[random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT), random.uniform(1, 4)] for _ in range(100)]
 
@@ -64,12 +65,13 @@ def show_home_screen(screen, clock):
         {"text": "Galactic Web Browser", "action": "WEB_BROWSER", "rect": None, "override_color": (0, 100, 100)},
         {"text": "Store / Armory (P1)", "action": "STORE_P1", "rect": None},
         {"text": "Select Ship (P1)", "action": "SELECT_SHIP_P1", "rect": None},
+        {"text": "🔊 Audio & Music Settings", "action": "AUDIO_SETTINGS", "rect": None, "override_color": (30, 80, 140)},
         {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "rect": None},
         {"text": "GUI Level Architect", "action": "LEVEL_EDITOR", "rect": None, "override_color": (0, 120, 60)},
         {"text": "Quit Game", "action": "QUIT_PROGRAM", "rect": None},
     ]
 
-    button_w, button_h, pad = 340, 35, 6
+    button_w, button_h, pad = 340, 34, 5
     y_start = SCREEN_HEIGHT // 2 - (len(button_options) * (button_h + pad)) // 2 + 30
 
     for i, opt in enumerate(button_options): 
@@ -78,15 +80,23 @@ def show_home_screen(screen, clock):
     while True:
         mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: return "QUIT_PROGRAM"
-            if megahack.handle_event(event): continue
+            if event.type == pygame.QUIT: 
+                return "QUIT_PROGRAM"
+            if megahack.handle_event(event): 
+                continue
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 for opt in button_options:
-                    if opt["rect"].collidepoint(mouse_pos): return opt["action"]
+                    if opt["rect"].collidepoint(mouse_pos):
+                        sound_manager.play_sfx("ui_click")
+                        return opt["action"]
             if event.type == pygame.KEYDOWN:
-                if event.key in [pygame.K_q, pygame.K_ESCAPE]: return "QUIT_PROGRAM"
-                if event.key in [pygame.K_BACKQUOTE, pygame.K_F12]: return "ADMIN_PANEL"
+                if event.key in [pygame.K_q, pygame.K_ESCAPE]: 
+                    sound_manager.play_sfx("ui_click")
+                    return "QUIT_PROGRAM"
+                if event.key in [pygame.K_BACKQUOTE, pygame.K_F12]: 
+                    sound_manager.play_sfx("ui_click")
+                    return "ADMIN_PANEL"
 
         screen.fill(BLACK)
         draw_stars(screen)
@@ -144,14 +154,21 @@ def show_store_screen(screen, clock, player_id_str):
                                 else: player_data["owned_ships"].append(item["key"])
                                 item["is_owned"] = True
                                 state.save_game_progress()
-                    if back_btn.collidepoint(mouse_pos): return "HOME"
+                                sound_manager.play_sfx("powerup_collect", 0.9)
+                            else:
+                                sound_manager.play_sfx("game_over", 0.4)
+                    if back_btn.collidepoint(mouse_pos): 
+                        sound_manager.play_sfx("ui_click")
+                        return "HOME"
                 elif event.button == 4: scroll_offset = min(scroll_offset + 80, 0)
                 elif event.button == 5:
                     if store_items:
                         max_scroll = -((store_items[-1]["original_y"] - start_y + btn_h + 20) - (SCREEN_HEIGHT - (fixed_title_y + 120)))
                         scroll_offset = max(scroll_offset - 80, max_scroll) if max_scroll < 0 else 0
                         
-            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_h]: return "HOME"
+            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_h]: 
+                sound_manager.play_sfx("ui_click")
+                return "HOME"
 
         draw_scrollable_menu(screen, store_items, scroll_offset, mouse_pos, f"{player_id_str}'s Armory", FONT_LARGE, YELLOW, fixed_title_y, currency=f"Credits: {player_data['credits']}")
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
@@ -193,15 +210,20 @@ def show_ship_selection_screen(screen, clock, player_id_str):
                         if item_rect.collidepoint(mouse_pos):
                             player_data["selected_ship"] = ship_item["key"]
                             state.save_game_progress()
+                            sound_manager.play_sfx("ui_click")
                             return "HOME"
-                    if back_btn.collidepoint(mouse_pos): return "HOME"
+                    if back_btn.collidepoint(mouse_pos): 
+                        sound_manager.play_sfx("ui_click")
+                        return "HOME"
                 elif event.button == 4: scroll_offset = min(scroll_offset + 85, 0)
                 elif event.button == 5:
                     if selectable_ships:
                         max_scroll = -((selectable_ships[-1]["original_y"] - start_y + 70) - (SCREEN_HEIGHT - (fixed_title_y + 120)))
                         scroll_offset = max(scroll_offset - 85, max_scroll) if max_scroll < 0 else 0
                         
-            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_h]: return "HOME"
+            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_h]: 
+                sound_manager.play_sfx("ui_click")
+                return "HOME"
 
         draw_scrollable_menu(screen, selectable_ships, scroll_offset, mouse_pos, "SHIP COLLECTION", FONT_LARGE, YELLOW, fixed_title_y, currency=f"Credits: {player_data['credits']}")
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
@@ -238,14 +260,19 @@ def show_mod_loader_screen(screen, clock):
                             else: state.active_mods.append(item["key"])
                             state.save_mod_config()
                             state.reload_mods()
-                    if back_btn.collidepoint(mouse_pos): return "HOME"
+                            sound_manager.play_sfx("hack_toggle")
+                    if back_btn.collidepoint(mouse_pos): 
+                        sound_manager.play_sfx("ui_click")
+                        return "HOME"
                 elif event.button == 4: scroll_offset = min(scroll_offset + 80, 0)
                 elif event.button == 5:
                     if mod_items:
                         max_scroll = -((mod_items[-1]["original_y"] - start_y + 80) - (SCREEN_HEIGHT - (fixed_title_y + 120)))
                         scroll_offset = max(scroll_offset - 80, max_scroll) if max_scroll < 0 else 0
                         
-            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_h]: return "HOME"
+            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_h]: 
+                sound_manager.play_sfx("ui_click")
+                return "HOME"
 
         draw_scrollable_menu(screen, mod_items, scroll_offset, mouse_pos, "MOD LOADER", FONT_LARGE, MAGENTA, fixed_title_y)
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
@@ -262,12 +289,20 @@ def show_password_screen(screen, clock):
             if event.type == pygame.QUIT: return "QUIT_PROGRAM"
             if megahack.handle_event(event): continue
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE: return "HOME"
+                if event.key == pygame.K_ESCAPE: 
+                    sound_manager.play_sfx("ui_click")
+                    return "HOME"
                 elif event.key == pygame.K_RETURN:
-                    if input_text.strip().upper() == "OMEGA": return "PLAYING_ULTIMATE_BOSS"
-                    else: error_msg, error_time, input_text = "ACCESS DENIED.", pygame.time.get_ticks(), ""
+                    if input_text.strip().upper() == "OMEGA": 
+                        sound_manager.play_sfx("victory")
+                        return "PLAYING_ULTIMATE_BOSS"
+                    else: 
+                        sound_manager.play_sfx("game_over", 0.4)
+                        error_msg, error_time, input_text = "ACCESS DENIED.", pygame.time.get_ticks(), ""
                 elif event.key == pygame.K_BACKSPACE: input_text = input_text[:-1]
-                elif event.unicode.isprintable(): input_text += event.unicode
+                elif event.unicode.isprintable(): 
+                    input_text += event.unicode
+                    sound_manager.play_sfx("dialogue_beep", 0.4)
         
         screen.fill(BLACK)
         draw_stars(screen)
@@ -391,6 +426,188 @@ def show_web_browser_screen(screen, clock):
         pygame.display.flip()
         clock.tick(int(FPS * state.GAME_SPEED))
 
+def show_audio_settings_screen(screen, clock):
+    """Full Audio and Music Settings Control Center."""
+    back_btn = pygame.Rect(SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT - 70, 300, 50)
+    
+    # Volume control buttons
+    vol_types = ["master_volume", "sfx_volume", "music_volume"]
+    labels = ["Master Volume", "Sound Effects (SFX)", "Music Volume"]
+    
+    test_sfx = [
+        ("Laser", "laser"),
+        ("Heavy Blast", "heavy_laser"),
+        ("Explosion", "explosion_medium"),
+        ("Boss Boom", "explosion_boss"),
+        ("Powerup", "powerup_collect"),
+        ("Shield Hit", "shield_hit"),
+        ("Level Up", "level_up"),
+        ("Alarm", "alarm_boss")
+    ]
+    
+    test_music = [
+        ("Menu Synth", "menu_theme"),
+        ("Battle Beat", "battle_theme"),
+        ("Boss Cyber", "boss_theme"),
+        ("Story Void", "story_theme"),
+        ("Victory!", "victory_theme")
+    ]
+
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        
+        # Build UI rects
+        center_x = SCREEN_WIDTH // 2
+        y_cursor = 140
+        
+        vol_rects = {}
+        for idx, vkey in enumerate(vol_types):
+            minus_rect = pygame.Rect(center_x - 190, y_cursor, 40, 36)
+            bar_rect = pygame.Rect(center_x - 140, y_cursor, 280, 36)
+            plus_rect = pygame.Rect(center_x + 150, y_cursor, 40, 36)
+            vol_rects[vkey] = (minus_rect, bar_rect, plus_rect)
+            y_cursor += 55
+            
+        # Mute toggle rects
+        sfx_mute_rect = pygame.Rect(center_x - 180, y_cursor + 10, 170, 40)
+        music_mute_rect = pygame.Rect(center_x + 10, y_cursor + 10, 170, 40)
+        y_cursor += 75
+        
+        # SFX test rects
+        sfx_btn_rects = []
+        for i, (label, sound_id) in enumerate(test_sfx):
+            col = i % 4
+            row = i // 4
+            r = pygame.Rect(center_x - 260 + (col * 135), y_cursor + (row * 42), 125, 34)
+            sfx_btn_rects.append((r, label, sound_id))
+            
+        y_cursor += 105
+        
+        # Music test rects
+        music_btn_rects = []
+        for i, (label, track_id) in enumerate(test_music):
+            r = pygame.Rect(center_x - 325 + (i * 132), y_cursor, 125, 34)
+            music_btn_rects.append((r, label, track_id))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: 
+                return "QUIT_PROGRAM"
+            if megahack.handle_event(event): 
+                continue
+            
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Check volume minus/plus
+                for vkey, (minus_r, _, plus_r) in vol_rects.items():
+                    if minus_r.collidepoint(mouse_pos):
+                        state.audio_settings[vkey] = max(0.0, round(state.audio_settings.get(vkey, 1.0) - 0.1, 1))
+                        sound_manager.update_audio_volumes()
+                        state.save_audio_config()
+                        sound_manager.play_sfx("ui_click")
+                    elif plus_r.collidepoint(mouse_pos):
+                        state.audio_settings[vkey] = min(1.0, round(state.audio_settings.get(vkey, 1.0) + 0.1, 1))
+                        sound_manager.update_audio_volumes()
+                        state.save_audio_config()
+                        sound_manager.play_sfx("ui_click")
+                        
+                # Check mute toggles
+                if sfx_mute_rect.collidepoint(mouse_pos):
+                    state.audio_settings["sfx_muted"] = not state.audio_settings.get("sfx_muted", False)
+                    sound_manager.update_audio_volumes()
+                    state.save_audio_config()
+                    sound_manager.play_sfx("hack_toggle")
+                    
+                if music_mute_rect.collidepoint(mouse_pos):
+                    state.audio_settings["music_muted"] = not state.audio_settings.get("music_muted", False)
+                    sound_manager.update_audio_volumes()
+                    state.save_audio_config()
+                    sound_manager.play_sfx("hack_toggle")
+                    
+                # Check SFX test buttons
+                for r, label, sound_id in sfx_btn_rects:
+                    if r.collidepoint(mouse_pos):
+                        sound_manager.play_sfx(sound_id, 1.0)
+                        
+                # Check Music test buttons
+                for r, label, track_id in music_btn_rects:
+                    if r.collidepoint(mouse_pos):
+                        sound_manager.play_music(track_id, loop=True)
+                        sound_manager.play_sfx("ui_click")
+                        
+                if back_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    sound_manager.play_music("menu_theme")
+                    return "HOME"
+                    
+            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_h]:
+                sound_manager.play_sfx("ui_click")
+                sound_manager.play_music("menu_theme")
+                return "HOME"
+
+        screen.fill(BLACK)
+        draw_stars(screen)
+        
+        # Header
+        draw_text("🔊 AUDIO & MUSIC CONTROLS", FONT_LARGE, CYAN, center_x, 60, screen)
+        draw_text("Customize sound levels, test stereo sound effects, and switch music tracks.", FONT_SMALL, LIGHT_GRAY, center_x, 100, screen)
+        
+        # Draw Volume Sliders
+        for idx, vkey in enumerate(vol_types):
+            minus_r, bar_r, plus_r = vol_rects[vkey]
+            cur_val = state.audio_settings.get(vkey, 1.0)
+            
+            # Label
+            draw_text(labels[idx], FONT_MEDIUM, WHITE, minus_r.left - 20, minus_r.centery, screen, align="right")
+            
+            # Minus button
+            pygame.draw.rect(screen, BUTTON_HOVER_COLOR if minus_r.collidepoint(mouse_pos) else BUTTON_COLOR, minus_r, border_radius=6)
+            draw_text("-", FONT_MEDIUM, WHITE, minus_r.centerx, minus_r.centery, screen)
+            
+            # Bar background & Fill
+            pygame.draw.rect(screen, DARK_GRAY, bar_r, border_radius=6)
+            fill_w = int(bar_r.width * cur_val)
+            if fill_w > 0:
+                bar_color = CYAN if "master" in vkey else (YELLOW if "sfx" in vkey else MAGENTA)
+                pygame.draw.rect(screen, bar_color, (bar_r.x, bar_r.y, fill_w, bar_r.height), border_radius=6)
+            draw_text(f"{int(cur_val * 100)}%", FONT_SMALL, WHITE, bar_r.centerx, bar_r.centery, screen)
+            
+            # Plus button
+            pygame.draw.rect(screen, BUTTON_HOVER_COLOR if plus_r.collidepoint(mouse_pos) else BUTTON_COLOR, plus_r, border_radius=6)
+            draw_text("+", FONT_MEDIUM, WHITE, plus_r.centerx, plus_r.centery, screen)
+            
+        # Draw Mute Toggles
+        sfx_muted = state.audio_settings.get("sfx_muted", False)
+        sfx_color = MOD_OFF_COLOR if sfx_muted else MOD_ON_COLOR
+        pygame.draw.rect(screen, sfx_color, sfx_mute_rect, border_radius=8)
+        draw_text(f"SFX: {'MUTED' if sfx_muted else 'ENABLED'}", FONT_SMALL, WHITE, sfx_mute_rect.centerx, sfx_mute_rect.centery, screen)
+        
+        mus_muted = state.audio_settings.get("music_muted", False)
+        mus_color = MOD_OFF_COLOR if mus_muted else MOD_ON_COLOR
+        pygame.draw.rect(screen, mus_color, music_mute_rect, border_radius=8)
+        draw_text(f"Music: {'MUTED' if mus_muted else 'ENABLED'}", FONT_SMALL, WHITE, music_mute_rect.centerx, music_mute_rect.centery, screen)
+        
+        # Draw SFX Test Section
+        draw_text("─── Test Sound Effects ───", FONT_SMALL, YELLOW, center_x, sfx_btn_rects[0][0].top - 18, screen)
+        for r, label, _ in sfx_btn_rects:
+            c = BUTTON_HOVER_COLOR if r.collidepoint(mouse_pos) else (50, 60, 90)
+            pygame.draw.rect(screen, c, r, border_radius=6)
+            draw_text(label, FONT_SMALL, WHITE, r.centerx, r.centery, screen)
+            
+        # Draw Music Test Section
+        draw_text("─── Switch Music Soundtrack ───", FONT_SMALL, MAGENTA, center_x, music_btn_rects[0][0].top - 18, screen)
+        for r, label, track_id in music_btn_rects:
+            is_active = (sound_manager.SoundManager.get_instance().current_music_track == track_id)
+            c = (140, 40, 100) if is_active else (BUTTON_HOVER_COLOR if r.collidepoint(mouse_pos) else (60, 40, 70))
+            pygame.draw.rect(screen, c, r, border_radius=6)
+            draw_text(label, FONT_SMALL, YELLOW if is_active else WHITE, r.centerx, r.centery, screen)
+
+        # Back Button
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
+        draw_text("Save & Return to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
+        
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))
+
 def show_instructions_screen(screen, clock, mode):
     screen.fill(BLACK)
     draw_stars(screen)
@@ -404,8 +621,11 @@ def show_instructions_screen(screen, clock, mode):
     waiting = True
     while waiting:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: sys.exit()
-            if event.type == pygame.KEYDOWN: waiting = False
+            if event.type == pygame.QUIT: 
+                sys.exit()
+            if event.type == pygame.KEYDOWN: 
+                sound_manager.play_sfx("ui_click")
+                waiting = False
         clock.tick(FPS)
 
 def show_game_over_screen(screen, clock, did_win_game, winner_id=0):
@@ -418,8 +638,12 @@ def show_game_over_screen(screen, clock, did_win_game, winner_id=0):
     
     while True:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: return "QUIT_PROGRAM"
+            if event.type == pygame.QUIT: 
+                return "QUIT_PROGRAM"
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_h: return "HOME"
-                elif event.key == pygame.K_q: return "QUIT_PROGRAM"
+                if event.key == pygame.K_h: 
+                    sound_manager.play_sfx("ui_click")
+                    return "HOME"
+                elif event.key == pygame.K_q: 
+                    return "QUIT_PROGRAM"
         clock.tick(FPS)

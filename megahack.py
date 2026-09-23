@@ -1,6 +1,7 @@
 import pygame
 from settings import *
 import state
+import sound_manager
 
 def draw_text(text, font, color, x, y, surface, align="center"):
     text_surface = font.render(text, True, color)
@@ -26,8 +27,8 @@ def apply_instant_hacks(hack):
 def handle_event(event):
     """GLOBAL HOOK: Call this first in EVERY event loop!"""
     if event.type == pygame.KEYDOWN and event.key == pygame.K_TAB:
-        # BUG FIXED: The web browser lock is removed! TAB always works now.
         state.CHEAT_MENU_VISIBLE = not state.CHEAT_MENU_VISIBLE
+        sound_manager.play_sfx("hack_toggle")
         return True 
 
     if not state.CHEAT_MENU_VISIBLE: 
@@ -45,6 +46,7 @@ def handle_event(event):
             tab_rect = pygame.Rect(menu_x, menu_y + 50 + (i * 50), tab_w, 50)
             if tab_rect.collidepoint(mouse_pos):
                 state.MH_ACTIVE_TAB = category
+                sound_manager.play_sfx("ui_click")
                 return True
                 
         # Clicked Hacks?
@@ -69,6 +71,7 @@ def handle_event(event):
                 else:
                     state.ACTIVE_HACKS[hack] = not state.ACTIVE_HACKS[hack]
                     apply_instant_hacks(hack)
+                sound_manager.play_sfx("hack_toggle")
                 return True
         return True 
     return False

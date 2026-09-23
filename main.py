@@ -12,6 +12,7 @@ from autopilot import AdvancedAutoPilot
 from level_editor import run_level_editor, process_active_hacks
 import ui
 import megahack
+import sound_manager
 
 pygame.init()
 SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
@@ -25,6 +26,7 @@ ASTEROID_BASE_SPEED_INITIAL = 2
 SCORE_TO_WIN = 5000
 
 def spinoff_game_loop():
+    sound_manager.play_music("story_theme")
     player = Player(player_id=1, ship_type_key=state.all_player_data["P1"]["selected_ship"])
     all_sprites = pygame.sprite.Group()
     player_bullets = pygame.sprite.Group()
@@ -69,6 +71,7 @@ def spinoff_game_loop():
                     state.ACTIVE_HACKS["Auto Pilot"] = not state.ACTIVE_HACKS.get("Auto Pilot", False)
                 if story_state == "DIALOGUE" and event.key == pygame.K_SPACE:
                     dialogue_idx += 1
+                    sound_manager.play_sfx("dialogue_beep", 0.6)
                     if dialogue_idx >= len(lvl_data["text"]):
                         story_state = "PLAYING"
                         level_timer = 0
@@ -103,6 +106,7 @@ def spinoff_game_loop():
                         asteroids.add(ast)
                     if level_timer >= lvl_data["goal_val"]: 
                         story_state = "LEVEL_CLEAR"
+                        sound_manager.play_sfx("level_up", 0.9)
                         
                 elif lvl_data["goal_type"] == "kill":
                     level_timer += 1
@@ -114,6 +118,7 @@ def spinoff_game_loop():
                         d.shoot(all_sprites, enemy_bullets)
                     if level_progress >= lvl_data["goal_val"]: 
                         story_state = "LEVEL_CLEAR"
+                        sound_manager.play_sfx("level_up", 0.9)
                         
                 elif lvl_data["goal_type"] == "boss":
                     if not the_boss or not the_boss.alive():
@@ -123,29 +128,31 @@ def spinoff_game_loop():
                             level_timer = 1
                         else: 
                             story_state = "LEVEL_CLEAR"
+                            sound_manager.play_sfx("level_up", 0.9)
                     else: 
                         the_boss.shoot(all_sprites, enemy_bullets, 600)
 
                 for b in list(player_bullets):
                     for ast in pygame.sprite.spritecollide(b, asteroids, True): 
                         b.kill()
-                        all_sprites.add(Explosion(ast.rect.center))
+                        all_sprites.add(Explosion(ast.rect.center, size="small"))
                     for drn in pygame.sprite.spritecollide(b, drones, True): 
                         b.kill()
-                        all_sprites.add(Explosion(drn.rect.center))
+                        all_sprites.add(Explosion(drn.rect.center, size="medium"))
                         level_progress += 1
                     if the_boss and the_boss.alive() and pygame.sprite.collide_rect(b, the_boss):
                         b.kill()
                         the_boss.health -= 20
                         if the_boss.health <= 0: 
                             the_boss.kill()
-                            all_sprites.add(Explosion(the_boss.rect.center))
+                            all_sprites.add(Explosion(the_boss.rect.center, size="boss"))
 
                 if pygame.sprite.spritecollide(player, asteroids, True) or pygame.sprite.spritecollide(player, drones, True) or pygame.sprite.spritecollide(player, enemy_bullets, True):
                     if not player.take_hit(): 
-                        all_sprites.add(Explosion(player.rect.center))
+                        all_sprites.add(Explosion(player.rect.center, size="medium"))
                         player.kill()
                         story_state = "GAME_OVER"
+                        sound_manager.play_sfx("game_over", 0.9)
 
         # --- 2.2 CYBERPUNK BACKGROUND ENGINE ---
         if state.ACTIVE_HACKS.get("Cyberpunk BG", False):
@@ -259,6 +266,7 @@ def spinoff_game_loop():
     return "HOME"
 
 def ultimate_boss_loop():
+    sound_manager.play_music("boss_theme")
     state.CHEAT_MENU_VISIBLE = False
     player = Player(1, "default_jet")
     all_sprites = pygame.sprite.Group()
@@ -318,6 +326,7 @@ def ultimate_boss_loop():
                     the_boss.shoot(all_sprites, e_bullets, 250) 
                 else: 
                     b_state = "LEVEL_CLEAR"
+                    sound_manager.play_sfx("victory", 1.0)
 
                 if random.randint(1, 45) == 1: 
                     ast = Asteroid(2.5, True)
@@ -327,20 +336,23 @@ def ultimate_boss_loop():
                 for b in list(p_bullets):
                     for ast in pygame.sprite.spritecollide(b, asteroids, True): 
                         b.kill()
-                        all_sprites.add(Explosion(ast.rect.center))
+                        all_sprites.add(Explosion(ast.rect.center, size="small"))
                         
                     if the_boss.alive() and pygame.sprite.collide_rect(b, the_boss):
                         b.kill()
                         the_boss.health -= 15
                         if the_boss.health <= 0: 
                             the_boss.kill()
-                            all_sprites.add(Explosion(the_boss.rect.center))
+                            all_sprites.add(Explosion(the_boss.rect.center, size="boss"))
+                            b_state = "LEVEL_CLEAR"
+                            sound_manager.play_sfx("victory", 1.0)
 
                 if pygame.sprite.spritecollide(player, asteroids, True) or pygame.sprite.spritecollide(player, e_bullets, True):
                     if not player.take_hit(): 
-                        all_sprites.add(Explosion(player.rect.center))
+                        all_sprites.add(Explosion(player.rect.center, size="medium"))
                         player.kill()
                         b_state = "GAME_OVER"
+                        sound_manager.play_sfx("game_over", 1.0)
 
         # --- 2.2 CYBERPUNK BACKGROUND ENGINE ---
         if state.ACTIVE_HACKS.get("Cyberpunk BG", False):
@@ -537,6 +549,11 @@ def game_loop(current_mode):
                 
             CLOCK.tick(int(FPS * state.GAME_SPEED))
 
+    if BOSS_MODE_ACTIVE:
+        sound_manager.play_music("boss_theme")
+    else:
+        sound_manager.play_music("battle_theme")
+
     # Host & Offline Setup
     players = {1: Player(1, state.all_player_data["P1"]["selected_ship"])}
     if "MULTI" in current_mode: 
@@ -622,6 +639,7 @@ def game_loop(current_mode):
         
         if state.ACTIVE_HACKS.get("Level Up", False):
             state.level += 1
+            sound_manager.play_sfx("level_up", 0.9)
             if boss: boss.health -= 200
             state.ACTIVE_HACKS["Level Up"] = False
         if state.ACTIVE_HACKS.get("Level Down", False):
@@ -660,7 +678,7 @@ def game_loop(current_mode):
             for b in list(p_bullets):
                 for ast in pygame.sprite.spritecollide(b, asteroids, True):
                     b.kill()
-                    all_sprites.add(Explosion(ast.rect.center))
+                    all_sprites.add(Explosion(ast.rect.center, size="small"))
                     if b.owner_id in players:
                         players[b.owner_id].add_score(10)
                         
@@ -669,17 +687,20 @@ def game_loop(current_mode):
                     boss.health -= 10
                     if boss.health <= 0: 
                         boss.kill()
-                        all_sprites.add(Explosion(boss.rect.center))
+                        all_sprites.add(Explosion(boss.rect.center, size="boss"))
                         running = False
                         state.win_status = True
+                        sound_manager.play_sfx("victory", 1.0)
 
             for p in players.values():
                 for ast in pygame.sprite.spritecollide(p, asteroids, True):
                     if not p.take_hit(): 
+                        all_sprites.add(Explosion(p.rect.center, size="medium"))
                         running = False
                         state.win_status = False
+                        sound_manager.play_sfx("game_over", 1.0)
                     else: 
-                        all_sprites.add(Explosion(ast.rect.center))
+                        all_sprites.add(Explosion(ast.rect.center, size="small"))
                         new_ast = Asteroid(1)
                         all_sprites.add(new_ast)
                         asteroids.add(new_ast)
@@ -687,8 +708,10 @@ def game_loop(current_mode):
                 if boss_bullets:
                     for bb in pygame.sprite.spritecollide(p, boss_bullets, True):
                         if not p.take_hit(): 
+                            all_sprites.add(Explosion(p.rect.center, size="medium"))
                             running = False
                             state.win_status = False
+                            sound_manager.play_sfx("game_over", 1.0)
                             
                 for pu in pygame.sprite.spritecollide(p, powerups, True):
                     if pu.power_type == "triple_shot": 
@@ -703,8 +726,10 @@ def game_loop(current_mode):
                 if max_score >= SCORE_TO_WIN: 
                     state.win_status = True
                     running = False
+                    sound_manager.play_sfx("victory", 1.0)
                 elif max_score >= state.level * 1000: 
                     state.level += 1
+                    sound_manager.play_sfx("level_up", 0.9)
 
         if current_mode.startswith("LAN_HOST") or current_mode == "HOST_CLOUD":
             payload = {
@@ -834,10 +859,14 @@ def game_loop(current_mode):
 def main():
     state.load_game_progress()
     state.load_mod_config()
+    state.load_audio_config()
     state.reload_mods()
+    sound_manager.SoundManager.get_instance()
+    sound_manager.play_music("menu_theme")
     
     while True:
         if state.game_state == "HOME":
+            sound_manager.play_music("menu_theme")
             action = ui.show_home_screen(SCREEN, CLOCK)
             if action == "QUIT_PROGRAM": 
                 break
@@ -877,6 +906,8 @@ def main():
                 ui.show_store_screen(SCREEN, CLOCK, "P2")
             elif action == "SELECT_SHIP_P2": 
                 ui.show_ship_selection_screen(SCREEN, CLOCK, "P2")
+            elif action == "AUDIO_SETTINGS":
+                ui.show_audio_settings_screen(SCREEN, CLOCK)
             elif action == "MOD_LOADER": 
                 ui.show_mod_loader_screen(SCREEN, CLOCK)
             elif action == "LEVEL_EDITOR": 

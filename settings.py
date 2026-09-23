@@ -61,6 +61,10 @@ else:
 
 PROGRESS_FILE = os.path.join(BASE_DIR, "galactic_defender_progress.json")
 MOD_CONFIG_FILE = os.path.join(BASE_DIR, "mod_config.json")
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+SOUNDS_DIR = os.path.join(ASSETS_DIR, "sounds")
+MUSIC_DIR = os.path.join(ASSETS_DIR, "music")
+AUDIO_CONFIG_FILE = os.path.join(BASE_DIR, "audio_config.json")
 
 # --- Base Catalogs ---
 BASE_SHIP_TYPES = {

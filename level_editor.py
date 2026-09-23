@@ -8,6 +8,7 @@ from sprites import Player, Asteroid, Boss, SpinoffDrone, Explosion, PowerUp
 from autopilot import AdvancedAutoPilot
 import ui
 import megahack
+import sound_manager
 
 def process_active_hacks(players_dict, all_sprites, asteroids, enemies, powerups, bosses):
     """Processes dynamic hack effects inside gameplay loops."""
@@ -41,6 +42,7 @@ def process_active_hacks(players_dict, all_sprites, asteroids, enemies, powerups
         state.ACTIVE_HACKS["Full Heal"] = False
 
 def playtest_level(screen, grid_data, grid_w, grid_h, cell_size):
+    sound_manager.play_music("battle_theme")
     clock = pygame.time.Clock()
     
     # Hide hack menu while starting test
@@ -141,15 +143,17 @@ def playtest_level(screen, grid_data, grid_w, grid_h, cell_size):
 
         if pygame.sprite.spritecollide(player, asteroids, True) or pygame.sprite.spritecollide(player, drones, True) or pygame.sprite.spritecollide(player, enemy_bullets, True):
             if not player.take_hit(): 
-                all_sprites.add(Explosion(player.rect.center)); player.kill()
+                all_sprites.add(Explosion(player.rect.center, size="medium")); player.kill()
                 test_message = "TEST FAILED! (Press ESC)"
                 msg_color = RED
                 scroll_speed = 0
+                sound_manager.play_sfx("game_over", 0.8)
 
         if virtual_y <= 0 and len(bosses) == 0 and len(drones) == 0 and len(asteroids) == 0: 
             test_message = "TEST PASSED! (Press ESC)"
             msg_color = WIN_GREEN
             scroll_speed = 0
+            sound_manager.play_sfx("victory", 0.9)
 
         screen.fill((15, 15, 25))
         ui.draw_stars(screen)
@@ -171,6 +175,7 @@ def playtest_level(screen, grid_data, grid_w, grid_h, cell_size):
         clock.tick(int(FPS * state.GAME_SPEED))
 
     state.CHEAT_MENU_VISIBLE = temp_cheat
+    sound_manager.play_music("menu_theme")
 
 def run_level_editor(screen):
     clock = pygame.time.Clock()
@@ -211,20 +216,24 @@ def run_level_editor(screen):
                 continue
             
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE: return
-                if event.key == pygame.K_1: current_tool = 1
-                if event.key == pygame.K_2: current_tool = 2
-                if event.key == pygame.K_3: current_tool = 3
-                if event.key == pygame.K_4: current_tool = 4
-                if event.key == pygame.K_0: current_tool = 0
+                if event.key == pygame.K_ESCAPE: 
+                    sound_manager.play_sfx("ui_click")
+                    return
+                if event.key == pygame.K_1: current_tool = 1; sound_manager.play_sfx("ui_hover")
+                if event.key == pygame.K_2: current_tool = 2; sound_manager.play_sfx("ui_hover")
+                if event.key == pygame.K_3: current_tool = 3; sound_manager.play_sfx("ui_hover")
+                if event.key == pygame.K_4: current_tool = 4; sound_manager.play_sfx("ui_hover")
+                if event.key == pygame.K_0: current_tool = 0; sound_manager.play_sfx("ui_hover")
             
             if event.type == pygame.MOUSEWHEEL:
                 camera_y = max(0, min(camera_y - event.y * cell_size, (grid_h * cell_size) - SCREEN_HEIGHT + 150))
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if exit_btn.collidepoint(mouse_pos): 
+                    sound_manager.play_sfx("ui_click")
                     return
                 if play_btn.collidepoint(mouse_pos): 
+                    sound_manager.play_sfx("ui_click")
                     playtest_level(screen, grid, grid_w, grid_h, cell_size)
                     
                 if save_btn.collidepoint(mouse_pos):
@@ -232,8 +241,10 @@ def run_level_editor(screen):
                         with open(os.path.join(BASE_DIR, "custom_level.json"), "w") as f: 
                             json.dump({"custom_waves": grid}, f)
                         msg, msg_timer = "SAVED!", pygame.time.get_ticks()
+                        sound_manager.play_sfx("hack_toggle")
                     except Exception: 
                         msg, msg_timer = "SAVE FAILED", pygame.time.get_ticks()
+                        sound_manager.play_sfx("game_over", 0.4)
                         
                 if load_btn.collidepoint(mouse_pos):
                     try:
@@ -243,12 +254,15 @@ def run_level_editor(screen):
                                 for c in range(min(grid_w, len(d[r]))): 
                                     grid[r][c] = d[r][c]
                         msg, msg_timer = "LOADED!", pygame.time.get_ticks()
+                        sound_manager.play_sfx("hack_toggle")
                     except Exception: 
                         msg, msg_timer = "NO SAVE FOUND", pygame.time.get_ticks()
+                        sound_manager.play_sfx("game_over", 0.4)
                         
                 for i, t in enumerate(tools):
                     if pygame.Rect(200 + (i * 160), SCREEN_HEIGHT - 90, 140, 60).collidepoint(mouse_pos): 
                         current_tool = t["id"]
+                        sound_manager.play_sfx("ui_click")
 
         if (mouse_click[0] or mouse_click[2]) and not ui_panel.collidepoint(mouse_pos) and not state.CHEAT_MENU_VISIBLE:
             gx = (mouse_pos[0] - offset_x) // cell_size

@@ -3,6 +3,7 @@ import random
 import math
 from settings import *
 import state
+import sound_manager
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, player_id=1, ship_type_key="default_jet"):
@@ -172,6 +173,11 @@ class Player(pygame.sprite.Sprite):
                 all_sprites_group.add(b)
                 bullet_group.add(b)
 
+            if self.power_up_active or self.num_blasters >= 3:
+                sound_manager.play_sfx("heavy_laser", 0.6)
+            else:
+                sound_manager.play_sfx("laser", 0.5)
+
     def add_score(self, points):
         self.score += points
         while self.score >= self.next_powerup_trigger_score:
@@ -182,11 +188,13 @@ class Player(pygame.sprite.Sprite):
     def activate_triple_shot(self):
         self.power_up_active = True
         self.power_up_timer = pygame.time.get_ticks()
+        sound_manager.play_sfx("powerup_collect", 0.85)
 
     def activate_shield(self):
         self.shield_active = True
         self.shield_health = 3
         self.shield_timer = pygame.time.get_ticks()
+        sound_manager.play_sfx("powerup_collect", 0.85)
 
     def take_hit(self):
         if state.ACTIVE_HACKS.get("Noclip", False) or state.ACTIVE_HACKS.get("God Mode", False) or getattr(state, "ADMIN_GOD_MODE", False):
@@ -195,6 +203,9 @@ class Player(pygame.sprite.Sprite):
             self.shield_health -= 1
             if self.shield_health <= 0: 
                 self.shield_active = False
+                sound_manager.play_sfx("shield_down", 0.9)
+            else:
+                sound_manager.play_sfx("shield_hit", 0.8)
             return True
         return False
 
@@ -270,16 +281,25 @@ class SpinoffDrone(pygame.sprite.Sprite):
             b.image.fill(CYAN)
             all_sprites_group.add(b)
             enemy_bullet_group.add(b)
+            sound_manager.play_sfx("enemy_laser", 0.45)
 
 class Explosion(pygame.sprite.Sprite):
-    def __init__(self, center):
+    def __init__(self, center, size="medium"):
         super().__init__()
         self.frame = 0
+        self.size = size
         self.image = pygame.Surface([80, 80], pygame.SRCALPHA)
         self.last_update = pygame.time.get_ticks()
         self.rect = self.image.get_rect(center=center)
         
         state.CAMERA_SHAKE = min(30, getattr(state, 'CAMERA_SHAKE', 0) + 8)
+        
+        if size == "boss":
+            sound_manager.play_sfx("explosion_boss", 1.0)
+        elif size == "small":
+            sound_manager.play_sfx("explosion_small", 0.6)
+        else:
+            sound_manager.play_sfx("explosion_medium", 0.75)
         
         # --- 2.2 ENGINE: SHATTER PARTICLES! ---
         for _ in range(25):
@@ -310,6 +330,7 @@ class PowerUp(pygame.sprite.Sprite):
         
         pygame.draw.circle(self.image, MAGENTA if power_type == "triple_shot" else CYAN, (15, 15), 15)
         pygame.draw.circle(self.image, WHITE, (15, 15), 15, 2)
+        sound_manager.play_sfx("powerup_spawn", 0.7)
 
     def update(self):
         self.rect.y += 3
@@ -332,6 +353,7 @@ class Boss(pygame.sprite.Sprite):
         pygame.draw.rect(self.image, self.boss_color, (0, 0, 200, 150), border_radius=15)
         pygame.draw.rect(self.image, (150, 0, 0), (10, 10, 180, 130), border_radius=10)
         pygame.draw.circle(self.image, RED, (100, 75), 20)
+        sound_manager.play_sfx("alarm_boss", 0.8)
 
     def update(self):
         if state.ACTIVE_HACKS.get("Freeze Time", False): 
@@ -352,3 +374,4 @@ class Boss(pygame.sprite.Sprite):
                 b.image.fill(ORANGE)
                 group.add(b)
                 bullets.add(b)
+            sound_manager.play_sfx("enemy_laser", 0.7)
