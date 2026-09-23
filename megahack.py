@@ -4,13 +4,22 @@ import state
 import sound_manager
 
 def draw_text(text, font, color, x, y, surface, align="center"):
-    text_surface = font.render(text, True, color)
+    text_surface = font.render(str(text), True, color)
     rect = text_surface.get_rect()
     if align == "center":
         rect.center = (x, y)
     elif align == "left":
         rect.midleft = (x, y)
+    elif align == "right":
+        rect.midright = (x, y)
+    elif align == "topleft":
+        rect.topleft = (x, y)
+    elif align == "topright":
+        rect.topright = (x, y)
+    elif align == "midtop":
+        rect.midtop = (x, y)
     surface.blit(text_surface, rect)
+    return rect
 
 def apply_instant_hacks(hack):
     if hack == "Infinite Credits":
