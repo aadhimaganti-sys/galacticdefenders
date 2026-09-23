@@ -1,0 +1,15 @@
+{
+  "primary_admin": "admin",
+  "users": {
+    "admin": {
+      "admin": true,
+      "password": "pw",
+      "player_data": {}
+    },
+    "user1": {
+      "admin": false,
+      "password": "pw",
+      "player_data": {}
+    }
+  }
+}

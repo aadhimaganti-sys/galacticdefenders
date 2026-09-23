@@ -158,4 +158,24 @@ def delete_user(username: str) -> bool:
     _save_all_users(data)
     return True
 
+# Added set_admin function to modify admin flag
+
+def set_admin(username: str, admin: bool) -> bool:
+    """Set the admin flag for a user.
+
+    Returns True on success, False if the user does not exist or is the primary admin.
+    """
+    data = _load_all_users()
+    users = data.get("users", {})
+    if username not in users:
+        return False
+    # Prevent changing the primary admin's admin status.
+    if data.get("primary_admin") == username:
+        return False
+    users[username]["admin"] = admin
+    _save_all_users(data)
+    return True
+
+
+
 # End of account.py

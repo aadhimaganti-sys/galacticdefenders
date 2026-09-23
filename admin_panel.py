@@ -84,6 +84,28 @@ def _delete_user() -> None:
     else:
         print(f"User '{username}' does not exist.")
 
+def _list_admins() -> None:
+    """Print usernames of admin users (including primary admin)."""
+    admins = [u for u in account.list_all_usernames() if account.is_admin(u)]
+    print("Admin users:")
+    for u in admins:
+        primary = " (primary)" if getattr(account, "is_primary_admin", lambda x: False)(u) else ""
+        print(f"- {u}{primary}")
+
+def _toggle_admin() -> None:
+    """Grant or revoke admin rights for a user (cannot affect primary admin)."""
+    username = _prompt("Enter username to toggle admin rights: ")
+    if getattr(account, "is_primary_admin", lambda x: False)(username):
+        print("Cannot change admin status of the primary admin.")
+        return
+    current = account.is_admin(username)
+    new_status = not current
+    if account.set_admin(username, new_status):
+        status_str = "granted" if new_status else "revoked"
+        print(f"Admin rights {status_str} for user '{username}'.")
+    else:
+        print(f"Failed to modify admin status for user '{username}'.")
+
 
 def run_admin_menu() -> None:
     """Main loop for the admin console.
@@ -102,7 +124,9 @@ def run_admin_menu() -> None:
         print("2) View user data")
         print("3) Edit user credits (demo setting)")
         print("4) Delete user")
-        print("5) Exit admin panel")
+        print("5) List admin users")
+        print("6) Toggle admin rights")
+        print("7) Exit admin panel")
         choice = _prompt("Enter number: ")
         if choice == "1":
             _list_users()
@@ -113,6 +137,10 @@ def run_admin_menu() -> None:
         elif choice == "4":
             _delete_user()
         elif choice == "5":
+            _list_admins()
+        elif choice == "6":
+            _toggle_admin()
+        elif choice == "7":
             print("Leaving admin panel.")
             break
         else:

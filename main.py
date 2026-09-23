@@ -745,7 +745,7 @@ def game_loop(current_mode):
             }
             if current_mode == "HOST_CLOUD":
                 try: 
-                    network.udp_sock.sendto(json.dumps({"action": "HOST_LOBBY", "lobby": network.GLOBAL_LOBBY_CODE, "state": payload}).encode(), (CLOUD_SERVER_IP, NETWORK_PORT))
+                    network.udp_sock.sendto(json.dumps({"action": "HOST_LOBBY", "lobby": network.GLOBAL_LOBBY_CODE, "state": payload}).encode(), (network.CLOUD_SERVER_IP, network.NETWORK_PORT))
                 except Exception: 
                     pass
             else:
