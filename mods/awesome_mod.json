@@ -1,0 +1,36 @@
+{
+    "powerups": {
+        "mega_heal": {
+            "color": [0, 255, 0],
+            "heal_amount": 50
+        },
+        "hyper_speed": {
+            "color": [255, 255, 0],
+            "speed_multiplier": 1.5
+        },
+        "rapid_fire": {
+            "color": [255, 0, 0],
+            "fire_rate_multiplier": 2.0
+        }
+    },
+    "ships": {
+        "obliterator": {
+            "name": "The Obliterator",
+            "max_health": 300,
+            "base_speed": 8,
+            "shoot_delay": 50,
+            "color": [200, 50, 50],
+            "cost": 0,
+            "unlocked_by_default": true
+        }
+    },
+    "helpers": {
+        "attack_drone_mk2": {
+            "name": "Attack Drone Mk II",
+            "cost": 0,
+            "shoot_delay": 200,
+            "color": [255, 100, 0],
+            "unlocked_by_default": true
+        }
+    }
+}

@@ -112,21 +112,28 @@ def save_mod_config():
     except Exception: 
         pass
 
+POWERUP_TYPES = {}
+
 def reload_mods():
-    global SHIP_TYPES, HELPER_TYPES
+    global SHIP_TYPES, HELPER_TYPES, POWERUP_TYPES
     SHIP_TYPES.clear()
     HELPER_TYPES.clear()
+    POWERUP_TYPES.clear()
     
     for k, v in BASE_SHIP_TYPES.items(): 
         SHIP_TYPES[k] = dict(v)
     for k, v in BASE_HELPER_TYPES.items(): 
         HELPER_TYPES[k] = dict(v)
         
+    mods_dir = os.path.join(BASE_DIR, "mods")
+    if not os.path.exists(mods_dir):
+        return
+        
     try:
-        for filename in os.listdir(BASE_DIR):
-            if filename.endswith(".json") and filename not in ["galactic_defender_progress.json", "mod_config.json", "custom_level.json"] and filename in active_mods:
+        for filename in os.listdir(mods_dir):
+            if filename.endswith(".json"):
                 try:
-                    with open(os.path.join(BASE_DIR, filename), "r") as f:
+                    with open(os.path.join(mods_dir, filename), "r") as f:
                         ext = json.load(f)
                         if "ships" in ext:
                             for k, d in ext["ships"].items():
@@ -138,14 +145,23 @@ def reload_mods():
                             for k, d in ext["helpers"].items():
                                 d["from_datapack"] = True
                                 HELPER_TYPES[k] = d
-                except Exception: 
-                    pass
+                        if "powerups" in ext:
+                            for k, d in ext["powerups"].items():
+                                d["color"] = tuple(d.get("color", (0, 255, 255)))
+                                POWERUP_TYPES[k] = d
+                except Exception as e: 
+                    print(f"Error loading mod {filename}: {e}")
     except Exception: 
         pass
 
 def load_game_progress():
-    global all_player_data
+    global all_player_data, current_user
     try:
+        import account
+        active_session = account.get_active_session()
+        if active_session:
+            current_user = active_session
+        
         if os.path.exists(PROGRESS_FILE):
             with open(PROGRESS_FILE, "r") as f:
                 loaded_data = json.load(f)
@@ -153,6 +169,11 @@ def load_game_progress():
                 all_player_data["P2"] = {**dict(DEFAULT_PLAYER_DATA), **loaded_data.get("P2", {})}
         else: 
             save_game_progress()
+
+        if current_user:
+            u_data = account.load_user_data(current_user)
+            if u_data:
+                all_player_data["P1"].update(u_data)
     except Exception: 
         save_game_progress()
 
@@ -160,5 +181,8 @@ def save_game_progress():
     try:
         with open(PROGRESS_FILE, "w") as f: 
             json.dump(all_player_data, f, indent=4)
+        if current_user:
+            import account
+            account.save_user_data(current_user, all_player_data["P1"])
     except Exception: 
         pass

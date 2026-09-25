@@ -147,4 +147,18 @@ def run_admin_menu() -> None:
             print("Invalid choice – try again.")
         input("Press Enter to continue...")
 
+
+if __name__ == "__main__":
+    if not state.current_user:
+        print("=== Galactic Defenders Admin Panel ===")
+        print("Please log in to continue.")
+        u = input("Username: ").strip()
+        p = input("Password: ").strip()
+        if account.login(u, p):
+            state.current_user = u
+            print(f"Logged in as '{u}'.")
+        else:
+            print("Invalid credentials.")
+    run_admin_menu()
+
 # End of admin_panel.py

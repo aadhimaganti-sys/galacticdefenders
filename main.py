@@ -700,7 +700,8 @@ def game_loop(current_mode):
                 
                 pu_timer += 1
                 if pu_timer >= 600:
-                    pu = PowerUp((random.randint(50, SCREEN_WIDTH - 50), -50), random.choice(["triple_shot", "shield"]))
+                    possible_powerups = ["triple_shot", "shield"] + list(state.POWERUP_TYPES.keys())
+                    pu = PowerUp((random.randint(50, SCREEN_WIDTH - 50), -50), random.choice(possible_powerups))
                     all_sprites.add(pu)
                     powerups.add(pu)
                     pu_timer = 0
@@ -748,6 +749,15 @@ def game_loop(current_mode):
                         p.activate_triple_shot()
                     elif pu.power_type == "shield": 
                         p.activate_shield()
+                    elif pu.power_type in state.POWERUP_TYPES:
+                        p_data = state.POWERUP_TYPES[pu.power_type]
+                        sound_manager.play_sfx("powerup_collect", 0.85)
+                        if "heal_amount" in p_data:
+                            p.health = min(p.max_health, p.health + p_data["heal_amount"])
+                        if "speed_multiplier" in p_data:
+                            p.base_speed = p.base_speed * p_data["speed_multiplier"]
+                        if "fire_rate_multiplier" in p_data:
+                            p.shoot_delay = int(p.shoot_delay / p_data["fire_rate_multiplier"])
 
             if not BOSS_MODE_ACTIVE and running:
                 state.score_p1 = players[1].score
@@ -955,6 +965,10 @@ def main():
                 run_level_editor(SCREEN)
             elif action == "ADMIN_PANEL": 
                 ui.show_admin_options(SCREEN, CLOCK)
+            elif action == "ACCOUNT_SCREEN":
+                ui.show_account_screen(SCREEN, CLOCK)
+            elif action == "ENGINE_ROOM":
+                state.game_state = "ENGINE_ROOM"
             elif action and action.startswith("PLAYING_"):
                 state.game_mode = action.replace("PLAYING_", "")
                 ui.show_instructions_screen(SCREEN, CLOCK, state.game_mode)
@@ -969,6 +983,22 @@ def main():
             if spinoff_game_loop() == "QUIT_PROGRAM": 
                 break
             state.game_state = "HOME"
+            
+        elif state.game_state == "ENGINE_ROOM":
+            result = ui.show_engine_room(SCREEN, CLOCK)
+            if result == "QUIT_PROGRAM":
+                break
+            elif result == "CONTROL_ROOM":
+                state.game_state = "CONTROL_ROOM"
+                
+        elif state.game_state == "CONTROL_ROOM":
+            result = ui.show_control_room(SCREEN, CLOCK)
+            if result == "QUIT_PROGRAM":
+                break
+            elif result == "PLAYING_SINGLE_CLASSIC":
+                state.game_mode = "SINGLE_CLASSIC"
+                ui.show_instructions_screen(SCREEN, CLOCK, state.game_mode)
+                state.game_state = "PLAYING"
             
         elif state.game_state == "ULTIMATE_BOSS":
             if ultimate_boss_loop() == "QUIT_PROGRAM": 

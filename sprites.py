@@ -6,8 +6,19 @@ import state
 import sound_manager
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, player_id=1, ship_type_key="default_jet"):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        player_id = kwargs.pop("player_id", 1)
+        ship_type_key = kwargs.pop("ship_type_key", "default_jet")
+        groups = tuple(kwargs.pop("groups", ()))
+
+        if args:
+            player_id = args[0]
+        if len(args) > 1:
+            ship_type_key = args[1]
+        if len(args) > 2:
+            groups = tuple(args[2:]) + groups
+
+        super().__init__(*groups)
         self.player_id = player_id
         self.is_network_client = False
         self.network_keys = {}
@@ -225,8 +236,19 @@ class Bullet(pygame.sprite.Sprite):
             self.kill()
 
 class Asteroid(pygame.sprite.Sprite):
-    def __init__(self, speed_multiplier=1.0, is_anomaly=False):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        speed_multiplier = kwargs.pop("speed_multiplier", 1.0)
+        is_anomaly = kwargs.pop("is_anomaly", False)
+        groups = tuple(kwargs.pop("groups", ()))
+
+        if args:
+            speed_multiplier = args[0]
+        if len(args) > 1:
+            is_anomaly = args[1]
+        if len(args) > 2:
+            groups = tuple(args[2:]) + groups
+
+        super().__init__(*groups)
         self.size = random.choice([30, 40, 50, 60, 70])
         self.image = pygame.Surface([self.size, self.size], pygame.SRCALPHA)
         
@@ -248,8 +270,8 @@ class Asteroid(pygame.sprite.Sprite):
             self.rect.y = random.randint(-150, -50)
 
 class SpinoffDrone(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *groups):
+        super().__init__(*groups)
         self.image = pygame.Surface([40, 40], pygame.SRCALPHA)
         pygame.draw.polygon(self.image, CYAN, [(20, 40), (0, 0), (40, 0)])
         pygame.draw.polygon(self.image, WHITE, [(20, 40), (0, 0), (40, 0)], 2)
@@ -284,8 +306,8 @@ class SpinoffDrone(pygame.sprite.Sprite):
             sound_manager.play_sfx("enemy_laser", 0.45)
 
 class Explosion(pygame.sprite.Sprite):
-    def __init__(self, center, size="medium"):
-        super().__init__()
+    def __init__(self, center, size="medium", *groups):
+        super().__init__(*groups)
         self.frame = 0
         self.size = size
         self.image = pygame.Surface([80, 80], pygame.SRCALPHA)
@@ -322,13 +344,18 @@ class Explosion(pygame.sprite.Sprite):
                 self.kill()
 
 class PowerUp(pygame.sprite.Sprite):
-    def __init__(self, center, power_type):
-        super().__init__()
+    def __init__(self, center, power_type, *groups):
+        super().__init__(*groups)
         self.power_type = power_type
         self.image = pygame.Surface([30, 30], pygame.SRCALPHA)
         self.rect = self.image.get_rect(center=center)
         
-        pygame.draw.circle(self.image, MAGENTA if power_type == "triple_shot" else CYAN, (15, 15), 15)
+        if power_type in ["triple_shot", "shield"]:
+            color = MAGENTA if power_type == "triple_shot" else CYAN
+        else:
+            import state
+            color = state.POWERUP_TYPES.get(power_type, {}).get("color", (255, 255, 255))
+        pygame.draw.circle(self.image, color, (15, 15), 15)
         pygame.draw.circle(self.image, WHITE, (15, 15), 15, 2)
         sound_manager.play_sfx("powerup_spawn", 0.7)
 
@@ -338,8 +365,19 @@ class PowerUp(pygame.sprite.Sprite):
             self.kill()
 
 class Boss(pygame.sprite.Sprite):
-    def __init__(self, health_override=500, color=BOSS_COLOR):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        health_override = kwargs.pop("health_override", 500)
+        color = kwargs.pop("color", BOSS_COLOR)
+        groups = tuple(kwargs.pop("groups", ()))
+
+        if args:
+            health_override = args[0]
+        if len(args) > 1:
+            color = args[1]
+        if len(args) > 2:
+            groups = tuple(args[2:]) + groups
+
+        super().__init__(*groups)
         self.health = health_override
         self.max_health = health_override
         self.boss_color = color

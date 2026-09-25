@@ -80,12 +80,13 @@ def register(username: str, password: str, admin: bool = False) -> bool:
     # Record the primary admin username for easy lookup.
     if is_first_user:
         data["primary_admin"] = username
+    data["last_logged_in"] = username
     _save_all_users(data)
     return True
 
 
 def login(username: str, password: str) -> bool:
-    """Validate credentials.
+    """Validate credentials and persist session.
 
     Returns ``True`` if the username exists and the password matches.
     """
@@ -94,7 +95,28 @@ def login(username: str, password: str) -> bool:
     user = users.get(username)
     if not user:
         return False
-    return user.get("password") == password
+    if user.get("password") == password:
+        data["last_logged_in"] = username
+        _save_all_users(data)
+        return True
+    return False
+
+
+def set_active_session(username: str | None) -> None:
+    """Persist the currently logged-in user session."""
+    data = _load_all_users()
+    data["last_logged_in"] = username
+    _save_all_users(data)
+
+
+def get_active_session() -> str | None:
+    """Retrieve the last logged-in username if valid."""
+    data = _load_all_users()
+    last_user = data.get("last_logged_in")
+    users = data.get("users", {})
+    if last_user and last_user in users:
+        return last_user
+    return None
 
 
 def load_user_data(username: str) -> Dict[str, Any]:
@@ -145,16 +167,18 @@ def is_primary_admin(username: str) -> bool:
 def delete_user(username: str) -> bool:
     """Remove *username* from the users database.
 
-    Returns True on success, False if the user does not exist.
+    Returns True on success, False if the user does not exist or is the primary admin.
     """
     data = _load_all_users()
     users = data.get("users", {})
     if username not in users:
         return False
-    del users[username]
-    # If the deleted user was the primary admin, clear the reference.
+    # Prevent deleting the primary admin account.
     if data.get("primary_admin") == username:
-        data.pop("primary_admin", None)
+        return False
+    del users[username]
+    if data.get("last_logged_in") == username:
+        data["last_logged_in"] = None
     _save_all_users(data)
     return True
 
