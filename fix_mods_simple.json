@@ -1,0 +1,13 @@
+{
+  "name": "mods",
+  "data": {
+    "mods": [
+      {
+        "name": "Ultra Blasters",
+        "fname": "ultra_blasters.json",
+        "desc": "Increases base damage.",
+        "json_str": "string"
+      }
+    ]
+  }
+}

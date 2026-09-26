@@ -1,0 +1,31 @@
+{
+  "name": "mods",
+  "data": {
+    "mods": [
+      {
+        "name": "Ultra Blasters",
+        "fname": "ultra_blasters.json",
+        "desc": "Increases base damage.",
+        "json_str": "{\"name\": \"Ultra Blasters\", \"cost\": 0, \"from_datapack\": true, \"player_stats\": {\"damage_multiplier\": 2.0}}"
+      },
+      {
+        "name": "Speed Demon",
+        "fname": "speed_demon.json",
+        "desc": "Increases player speed by 50%.",
+        "json_str": "{\"name\": \"Speed Demon\", \"cost\": 0, \"from_datapack\": true, \"player_stats\": {\"speed_multiplier\": 1.5}}"
+      },
+      {
+        "name": "God Mode Lite",
+        "fname": "god_mode_lite.json",
+        "desc": "Triples max health.",
+        "json_str": "{\"name\": \"God Mode Lite\", \"cost\": 0, \"from_datapack\": true, \"player_stats\": {\"health_multiplier\": 3.0}}"
+      },
+      {
+        "name": "Super Drone",
+        "fname": "super_drone.json",
+        "desc": "Adds an invincible helper drone.",
+        "json_str": "{\"name\": \"Super Drone\", \"cost\": 0, \"from_datapack\": true, \"player_stats\": {\"drone_count\": 2}}"
+      }
+    ]
+  }
+}

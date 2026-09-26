@@ -1089,15 +1089,22 @@ def show_web_browser_screen(screen, clock):
                             history_idx += 1
                         else:
                             for i, m in enumerate(cached_global_mods[:5]):
+                                if not isinstance(m, dict): continue
                                 y = by + 180 + i * 70
                                 dl_mod_btn = pygame.Rect(bx + 100 + browser_w - 380, y + 10, 150, 40)
                                 if dl_mod_btn.collidepoint(mouse_pos):
-                                    mods_dir = os.path.join(BASE_DIR, "mods")
-                                    os.makedirs(mods_dir, exist_ok=True)
-                                    mod_path = os.path.join(mods_dir, m["fname"])
-                                    if not os.path.exists(mod_path):
-                                        with open(mod_path, "w") as f: f.write(m["json_str"])
-                                        sound_manager.play_sfx("hack_toggle")
+                                    fname = m.get("fname")
+                                    json_str = m.get("json_str")
+                                    json_data = m.get("json_data")
+                                    if fname and (json_str or json_data):
+                                        if json_data and not json_str:
+                                            json_str = json.dumps(json_data)
+                                        mods_dir = os.path.join(BASE_DIR, "mods")
+                                        os.makedirs(mods_dir, exist_ok=True)
+                                        mod_path = os.path.join(mods_dir, fname)
+                                        if not os.path.exists(mod_path):
+                                            with open(mod_path, "w") as f: f.write(json_str)
+                                            sound_manager.play_sfx("hack_toggle")
                                         
                 elif current_url == "http://galactic.net/mods/create":
                     name_rect = pygame.Rect(bx + 200, by + 200, 400, 40)
@@ -1113,9 +1120,9 @@ def show_web_browser_screen(screen, clock):
                         fname = mod_name_input.lower().replace(" ", "_")[:15] + f"_{random.randint(100,999)}.json"
                         mult = round(random.uniform(1.5, 3.0), 1)
                         stat = random.choice(["damage_multiplier", "speed_multiplier", "health_multiplier"])
-                        jstr = json.dumps({"name": mod_name_input, "cost": 0, "from_datapack": True, "player_stats": {stat: mult}})
+                        jdata = {"name": mod_name_input, "cost": 0, "from_datapack": True, "player_stats": {stat: mult}}
                         
-                        threading.Thread(target=publish_global_mod, args=({"name": mod_name_input, "fname": fname, "desc": mod_desc_input, "json_str": jstr},), daemon=True).start()
+                        threading.Thread(target=publish_global_mod, args=({"name": mod_name_input, "fname": fname, "desc": mod_desc_input, "json_data": jdata},), daemon=True).start()
                         
                         mod_name_input = ""
                         mod_desc_input = ""
@@ -1249,16 +1256,18 @@ def show_web_browser_screen(screen, clock):
                     draw_text("Syncing with Global Cloud...", FONT_MEDIUM, YELLOW, bx + browser_w//2, by + 300, screen)
                 else:
                     for i, m in enumerate(cached_global_mods[:5]):
+                        if not isinstance(m, dict): continue
                         y = by + 180 + i * 70
-                    x = bx + 100
-                    pygame.draw.rect(screen, (40, 40, 60), (x, y, browser_w - 200, 60), border_radius=8)
-                    draw_text(m["name"], FONT_MEDIUM, YELLOW, x + 20, y + 30, screen, align="left")
-                    draw_text(m["desc"], FONT_SMALL, LIGHT_GRAY, x + 250, y + 30, screen, align="left")
-                    dl_mod_btn = pygame.Rect(x + browser_w - 380, y + 10, 150, 40)
-                    is_installed = os.path.exists(os.path.join(BASE_DIR, "mods", m["fname"]))
-                    
-                    pygame.draw.rect(screen, (50, 150, 50) if is_installed else BUTTON_COLOR, dl_mod_btn, border_radius=5)
-                    draw_text("ADDED" if is_installed else "ADD MOD", FONT_SMALL, WHITE, dl_mod_btn.centerx, dl_mod_btn.centery, screen)
+                        x = bx + 100
+                        pygame.draw.rect(screen, (40, 40, 60), (x, y, browser_w - 200, 60), border_radius=8)
+                        draw_text(m.get("name", "Unknown Mod"), FONT_MEDIUM, YELLOW, x + 20, y + 30, screen, align="left")
+                        draw_text(m.get("desc", "No description provided."), FONT_SMALL, LIGHT_GRAY, x + 250, y + 30, screen, align="left")
+                        dl_mod_btn = pygame.Rect(x + browser_w - 380, y + 10, 150, 40)
+                        fname = m.get("fname", f"unknown_mod_{i}.json")
+                        is_installed = os.path.exists(os.path.join(BASE_DIR, "mods", fname))
+                        
+                        pygame.draw.rect(screen, (50, 150, 50) if is_installed else BUTTON_COLOR, dl_mod_btn, border_radius=5)
+                        draw_text("ADDED" if is_installed else "ADD MOD", FONT_SMALL, WHITE, dl_mod_btn.centerx, dl_mod_btn.centery, screen)
 
         elif current_url == "http://galactic.net/mods/create":
             draw_text("MOD CREATOR WORKSHOP", FONT_LARGE, (100, 255, 100), bx + browser_w//2, by + 100, screen)
