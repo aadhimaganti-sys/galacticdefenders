@@ -49,6 +49,7 @@ class Player(pygame.sprite.Sprite):
             self.base_speed += 2
 
         self.last_shot_time = pygame.time.get_ticks()
+        self.last_warp_sound_time = 0
         self.num_blasters = self.ship_data.get("start_blasters", 1)
         self.score = 0
         self.next_powerup_trigger_score = 10
@@ -156,6 +157,11 @@ class Player(pygame.sprite.Sprite):
                     ])
 
         now = pygame.time.get_ticks()
+        if (self.speed_x != 0 or self.speed_y != 0) and self.base_speed >= 18:
+            if now - self.last_warp_sound_time > 3500:
+                sound_manager.play_sfx("warp_speed", 0.45)
+                self.last_warp_sound_time = now
+
         if self.power_up_active and (now - self.power_up_timer > self.power_up_duration): 
             self.power_up_active = False
         if self.shield_active and (now - self.shield_timer > self.shield_duration): 
@@ -186,6 +192,8 @@ class Player(pygame.sprite.Sprite):
 
             if self.power_up_active or self.num_blasters >= 3:
                 sound_manager.play_sfx("heavy_laser", 0.6)
+            elif "virus" in str(self.ship_data.get("name", "")).lower() or self.ship_data.get("speed", 7) >= 18:
+                sound_manager.play_sfx("virus_laser", 0.55)
             else:
                 sound_manager.play_sfx("laser", 0.5)
 

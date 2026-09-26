@@ -328,6 +328,371 @@ def gen_victory(duration=1.6):
         frames.append((0.0, 0.0))
     return frames
 
+# --- Cyberpunk Sound Set & Extra SFX Synthesizers ---
+
+def gen_cyber_laser(duration=0.15):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    mod_phase = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        carrier_freq = 1400 * math.exp(-4.5 * t) + 220
+        mod_freq = 160 + 80 * (1.0 - t)
+        mod_phase += 2 * math.pi * mod_freq / SAMPLE_RATE
+        fm_offset = 350 * math.sin(mod_phase) * (1.0 - t)
+        phase += 2 * math.pi * (carrier_freq + fm_offset) / SAMPLE_RATE
+        env = (1.0 - t) ** 1.8
+        val = (osc_saw(phase) * 0.6 + osc_square(phase, 0.4) * 0.4) * env * 0.85
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_heavy_laser(duration=0.26):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase1 = 0.0
+    phase2 = 0.0
+    sub_phase = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f1 = 900 * math.exp(-7.0 * t) + 120
+        f2 = 750 * math.exp(-6.0 * t) + 90
+        sub_f = 65 * math.exp(-3.0 * t) + 35
+        phase1 += 2 * math.pi * f1 / SAMPLE_RATE
+        phase2 += 2 * math.pi * f2 / SAMPLE_RATE
+        sub_phase += 2 * math.pi * sub_f / SAMPLE_RATE
+        env = (1.0 - t) ** 1.4
+        val = (osc_square(phase1, 0.35) * 0.45 + osc_saw(phase2) * 0.35 + osc_sine(sub_phase) * 0.4) * env * 0.9
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_enemy_laser(duration=0.20):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase1, phase2 = 0.0, 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f1 = 620 * (1.0 - t * 0.7)
+        f2 = f1 * 1.4142
+        phase1 += 2 * math.pi * f1 / SAMPLE_RATE
+        phase2 += 2 * math.pi * f2 / SAMPLE_RATE
+        tremolo = 0.7 + 0.3 * math.sin(2 * math.pi * 50 * t)
+        env = (1.0 - t) ** 1.3
+        val = (osc_square(phase1, 0.2) * 0.5 + osc_saw(phase2) * 0.5) * tremolo * env * 0.75
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_explosion_small(duration=0.22):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    lp = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        freq = 300 * math.exp(-12.0 * t) + 50
+        phase += 2 * math.pi * freq / SAMPLE_RATE
+        noise = osc_noise()
+        lp += 0.35 * (noise - lp)
+        env = (1.0 - t) ** 2.5
+        val = (osc_triangle(phase) * 0.5 + lp * 0.7) * env * 0.9
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_explosion_medium(duration=0.48):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    sub_phase = 0.0
+    lp = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        sub_freq = 160 * math.exp(-4.0 * t) + 32
+        sub_phase += 2 * math.pi * sub_freq / SAMPLE_RATE
+        noise = osc_noise()
+        lp += (0.28 - 0.15 * t) * (noise - lp)
+        env = (1.0 - t) ** 1.7
+        val = (osc_sine(sub_phase) * 0.6 + lp * 0.65) * env * 0.95
+        pan = 0.2 * math.sin(t * 15)
+        frames.append((val * (0.8 + pan), val * (0.8 - pan)))
+    return frames
+
+def gen_cyber_explosion_boss(duration=1.4):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    p1, p2 = 0.0, 0.0
+    lp = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f1 = 95 * math.exp(-2.5 * t) + 24
+        f2 = 130 * math.exp(-3.5 * t) + 38
+        p1 += 2 * math.pi * f1 / SAMPLE_RATE
+        p2 += 2 * math.pi * f2 / SAMPLE_RATE
+        noise = osc_noise()
+        if random.random() < 0.015:
+            noise = osc_square(p1 * 4)
+        lp += 0.22 * (noise - lp)
+        env = (1.0 - t) ** 1.5
+        rumble = (osc_triangle(p1) * 0.5 + osc_sine(p2) * 0.5)
+        val = (rumble * 0.6 + lp * 0.65) * env
+        frames.append((val * 0.95, val * 0.95))
+    return frames
+
+def gen_cyber_powerup_spawn(duration=0.38):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f = 400 + 1200 * (t ** 1.5)
+        phase += 2 * math.pi * f / SAMPLE_RATE
+        ring = math.sin(2 * math.pi * 30 * t)
+        env = math.sin(math.pi * t)
+        val = (osc_triangle(phase) * 0.6 + osc_sine(phase * 2) * 0.4) * (0.8 + 0.2 * ring) * env * 0.8
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_powerup_collect(duration=0.45):
+    notes = [587.33, 739.99, 880.00, 1174.66, 1479.98]
+    total_samples = int(SAMPLE_RATE * duration)
+    samples_per_note = total_samples // len(notes)
+    frames = []
+    for note_idx, freq in enumerate(notes):
+        p1, p2 = 0.0, 0.0
+        for i in range(samples_per_note):
+            t = i / samples_per_note
+            p1 += 2 * math.pi * freq / SAMPLE_RATE
+            p2 += 2 * math.pi * (freq * 1.006) / SAMPLE_RATE
+            env = (1.0 - t) ** 1.3
+            val = (osc_saw(p1) * 0.4 + osc_square(p2, 0.3) * 0.4 + osc_sine(p1 * 0.5) * 0.2) * env * 0.75
+            frames.append((val, val))
+    while len(frames) < total_samples:
+        frames.append((0.0, 0.0))
+    return frames
+
+def gen_cyber_shield_hit(duration=0.24):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    p1, p2 = 0.0, 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        p1 += 2 * math.pi * 580 / SAMPLE_RATE
+        p2 += 2 * math.pi * 1160 / SAMPLE_RATE
+        env = (1.0 - t) ** 3.0
+        ring = osc_sine(p1) * 0.6 + osc_triangle(p2) * 0.4
+        val = ring * env * 0.85
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_shield_down(duration=0.38):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f = 850 * math.exp(-4.5 * t) + 40
+        phase += 2 * math.pi * f / SAMPLE_RATE
+        env = (1.0 - t) ** 1.4
+        val = osc_saw(phase) * env * 0.7
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_level_up(duration=0.65):
+    notes = [440.00, 554.37, 659.25, 880.00]
+    total_samples = int(SAMPLE_RATE * duration)
+    samples_per_note = total_samples // len(notes)
+    frames = []
+    for note_idx, freq in enumerate(notes):
+        p1, p2 = 0.0, 0.0
+        for i in range(samples_per_note):
+            t = i / samples_per_note
+            p1 += 2 * math.pi * freq / SAMPLE_RATE
+            p2 += 2 * math.pi * (freq * 1.008) / SAMPLE_RATE
+            env = 1.0 - (t * 0.6) if note_idx == len(notes) - 1 else (1.0 - t)
+            val = (osc_saw(p1) * 0.5 + osc_square(p2, 0.45) * 0.4) * env * 0.8
+            frames.append((val, val))
+    while len(frames) < total_samples:
+        frames.append((0.0, 0.0))
+    return frames
+
+def gen_cyber_alarm_boss(duration=0.45):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    p1, p2 = 0.0, 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f1 = 880 if (int(t * 8) % 2 == 0) else 660
+        f2 = f1 * 1.02
+        p1 += 2 * math.pi * f1 / SAMPLE_RATE
+        p2 += 2 * math.pi * f2 / SAMPLE_RATE
+        env = 0.9 if t < 0.85 else (1.0 - t) / 0.15
+        val = (osc_saw(p1) * 0.5 + osc_square(p2, 0.3) * 0.4) * env * 0.75
+        pan = math.sin(2 * math.pi * 4 * t)
+        frames.append((val * (0.7 + 0.3 * pan), val * (0.7 - 0.3 * pan)))
+    return frames
+
+def gen_cyber_ui_click(duration=0.035):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f = 2200 * math.exp(-25.0 * t) + 400
+        phase += 2 * math.pi * f / SAMPLE_RATE
+        env = (1.0 - t) ** 4.0
+        val = osc_sine(phase) * env * 0.8
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_ui_hover(duration=0.035):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f = 1100 + 400 * t
+        phase += 2 * math.pi * f / SAMPLE_RATE
+        env = math.sin(math.pi * t)
+        val = osc_sine(phase) * env * 0.3
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_dialogue_beep(duration=0.045):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    f = 1250 + random.randint(-40, 40)
+    for i in range(total_samples):
+        t = i / total_samples
+        phase += 2 * math.pi * f / SAMPLE_RATE
+        env = (1.0 - t) ** 2.0
+        val = osc_square(phase, 0.4) * env * 0.45
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_hack_toggle(duration=0.07):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f = 450 + 750 * (t ** 2)
+        phase += 2 * math.pi * f / SAMPLE_RATE
+        env = (1.0 - t) ** 1.8
+        val = (osc_square(phase, 0.3) * 0.6 + osc_sine(phase * 2) * 0.3) * env * 0.6
+        frames.append((val, val))
+    return frames
+
+def gen_cyber_game_over(duration=1.2):
+    notes = [370.0, 311.13, 277.18, 185.0]
+    total_samples = int(SAMPLE_RATE * duration)
+    samples_per_note = total_samples // len(notes)
+    frames = []
+    for note_idx, freq in enumerate(notes):
+        p = 0.0
+        for i in range(samples_per_note):
+            t = i / samples_per_note
+            p += 2 * math.pi * freq / SAMPLE_RATE
+            env = 1.0 - t * 0.85
+            val = (osc_saw(p) * 0.5 + osc_sine(p) * 0.3) * env * 0.7
+            frames.append((val, val))
+    while len(frames) < total_samples:
+        frames.append((0.0, 0.0))
+    return frames
+
+def gen_cyber_victory(duration=1.4):
+    notes = [293.66, 369.99, 440.0, 587.33, 739.99, 880.0]
+    total_samples = int(SAMPLE_RATE * duration)
+    samples_per_note = total_samples // len(notes)
+    frames = []
+    for note_idx, freq in enumerate(notes):
+        p1, p2 = 0.0, 0.0
+        for i in range(samples_per_note):
+            t = i / samples_per_note
+            p1 += 2 * math.pi * freq / SAMPLE_RATE
+            p2 += 2 * math.pi * (freq * 1.007) / SAMPLE_RATE
+            env = (1.0 - t * 0.6) if note_idx == len(notes) - 1 else (1.0 - t * 0.9)
+            val = (osc_saw(p1) * 0.5 + osc_square(p2, 0.4) * 0.4) * env * 0.8
+            frames.append((val, val))
+    while len(frames) < total_samples:
+        frames.append((0.0, 0.0))
+    return frames
+
+def gen_warp_speed(duration=0.55):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    lp = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f = 60 + 280 * (t ** 2)
+        phase += 2 * math.pi * f / SAMPLE_RATE
+        noise = osc_noise()
+        lp += 0.25 * (noise - lp)
+        env = math.sin(math.pi * (t ** 0.6))
+        val = (osc_sine(phase) * 0.6 + lp * 0.5) * env * 0.9
+        frames.append((val, val))
+    return frames
+
+def gen_virus_laser(duration=0.18):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f = 1100 * math.exp(-3.5 * t) + 180
+        chopper = 1.0 if math.sin(2 * math.pi * 45 * t) > 0 else 0.3
+        phase += 2 * math.pi * f / SAMPLE_RATE
+        env = (1.0 - t) ** 1.4
+        val = osc_square(phase, 0.25) * chopper * env * 0.8
+        frames.append((val, val))
+    return frames
+
+def gen_plasma_cannon(duration=0.28):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase1, phase2 = 0.0, 0.0
+    for i in range(total_samples):
+        t = i / total_samples
+        f1 = 700 * math.exp(-5.0 * t) + 80
+        f2 = 350 * math.exp(-4.0 * t) + 40
+        phase1 += 2 * math.pi * f1 / SAMPLE_RATE
+        phase2 += 2 * math.pi * f2 / SAMPLE_RATE
+        env = (1.0 - t) ** 1.3
+        val = (osc_triangle(phase1) * 0.6 + osc_saw(phase2) * 0.4) * env * 0.85
+        frames.append((val, val))
+    return frames
+
+def gen_coin_pickup(duration=0.32):
+    notes = [1318.51, 1975.53]
+    total_samples = int(SAMPLE_RATE * duration)
+    samples_per_note = total_samples // len(notes)
+    frames = []
+    for note_idx, freq in enumerate(notes):
+        p1 = 0.0
+        for i in range(samples_per_note):
+            t = i / samples_per_note
+            p1 += 2 * math.pi * freq / SAMPLE_RATE
+            env = (1.0 - t) ** 2.2
+            val = (osc_sine(p1) * 0.7 + osc_triangle(p1 * 2) * 0.2) * env * 0.8
+            frames.append((val, val))
+    while len(frames) < total_samples:
+        frames.append((0.0, 0.0))
+    return frames
+
+def gen_glitch_burst(duration=0.28):
+    total_samples = int(SAMPLE_RATE * duration)
+    frames = []
+    phase = 0.0
+    f = 800.0
+    for i in range(total_samples):
+        t = i / total_samples
+        if i % (SAMPLE_RATE // 80) == 0:
+            f = random.choice([200, 450, 780, 1100, 1600])
+        phase += 2 * math.pi * f / SAMPLE_RATE
+        env = (1.0 - t) ** 1.8
+        val = (osc_square(phase, 0.3) * 0.6 + osc_noise() * 0.4) * env * 0.75
+        frames.append((val, val))
+    return frames
+
 # --- Multi-track Music Track Generators ---
 
 def note_to_freq(note_str):
@@ -669,7 +1034,12 @@ def generate_all_assets(base_dir=None):
         "dialogue_beep.wav": gen_dialogue_beep(),
         "hack_toggle.wav": gen_hack_toggle(),
         "game_over.wav": gen_game_over(),
-        "victory.wav": gen_victory()
+        "victory.wav": gen_victory(),
+        "warp_speed.wav": gen_warp_speed(),
+        "virus_laser.wav": gen_virus_laser(),
+        "plasma_cannon.wav": gen_plasma_cannon(),
+        "coin_pickup.wav": gen_coin_pickup(),
+        "glitch_burst.wav": gen_glitch_burst()
     }
     
     for filename, frames in sfx_manifest.items():
@@ -677,6 +1047,8 @@ def generate_all_assets(base_dir=None):
         create_wave_file(filepath, frames)
         print(f"  [+] Created sound effect: {filename}")
         
+    generate_cyber_soundpack(base_dir)
+
     print(f"Generating Music assets in {music_dir}...")
     music_manifest = {
         "menu_theme.wav": gen_menu_theme(),
@@ -692,6 +1064,43 @@ def generate_all_assets(base_dir=None):
         print(f"  [+] Created music track: {filename}")
         
     print("All audio assets generated successfully!")
+
+def generate_cyber_soundpack(base_dir=None):
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+    cyber_dir = os.path.join(base_dir, "assets", "sounds", "cyber")
+    os.makedirs(cyber_dir, exist_ok=True)
+    print(f"Generating Cyber Sound Pack in {cyber_dir}...")
+    cyber_manifest = {
+        "laser.wav": gen_cyber_laser(),
+        "heavy_laser.wav": gen_cyber_heavy_laser(),
+        "enemy_laser.wav": gen_cyber_enemy_laser(),
+        "explosion_small.wav": gen_cyber_explosion_small(),
+        "explosion_medium.wav": gen_cyber_explosion_medium(),
+        "explosion_boss.wav": gen_cyber_explosion_boss(),
+        "powerup_spawn.wav": gen_cyber_powerup_spawn(),
+        "powerup_collect.wav": gen_cyber_powerup_collect(),
+        "shield_hit.wav": gen_cyber_shield_hit(),
+        "shield_down.wav": gen_cyber_shield_down(),
+        "level_up.wav": gen_cyber_level_up(),
+        "alarm_boss.wav": gen_cyber_alarm_boss(),
+        "ui_click.wav": gen_cyber_ui_click(),
+        "ui_hover.wav": gen_cyber_ui_hover(),
+        "dialogue_beep.wav": gen_cyber_dialogue_beep(),
+        "hack_toggle.wav": gen_cyber_hack_toggle(),
+        "game_over.wav": gen_cyber_game_over(),
+        "victory.wav": gen_cyber_victory(),
+        "warp_speed.wav": gen_warp_speed(),
+        "virus_laser.wav": gen_virus_laser(),
+        "plasma_cannon.wav": gen_plasma_cannon(),
+        "coin_pickup.wav": gen_coin_pickup(),
+        "glitch_burst.wav": gen_glitch_burst()
+    }
+    for filename, frames in cyber_manifest.items():
+        filepath = os.path.join(cyber_dir, filename)
+        create_wave_file(filepath, frames)
+        print(f"  [+] Created cyber sound effect: {filename}")
+    print("Cyber Sound Pack generated successfully!")
 
 if __name__ == "__main__":
     generate_all_assets()

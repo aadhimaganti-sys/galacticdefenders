@@ -58,76 +58,64 @@ def draw_scrollable_menu(screen, options, offset, mouse_pos, title, font_t, colo
                 
             pygame.draw.rect(screen, color, r, border_radius=10)
             pygame.draw.rect(screen, (80, 100, 140), r, 2, border_radius=10)
-            draw_text(opt["text"], FONT_MEDIUM, WHITE, r.centerx, r.centery, screen)
             if "desc" in opt:
-                draw_text(opt["desc"], FONT_SMALL, LIGHT_GRAY, r.centerx, r.centery + 20, screen)
+                draw_text(opt["text"], FONT_MEDIUM, WHITE, r.centerx, r.centery - 10, screen)
+                draw_text(opt["desc"], FONT_SMALL, LIGHT_GRAY, r.centerx, r.centery + 15, screen)
+            else:
+                draw_text(opt["text"], FONT_MEDIUM, WHITE, r.centerx, r.centery, screen)
 
 def show_home_screen(screen, clock):
     selected_p1 = state.SHIP_TYPES.get(state.all_player_data["P1"]["selected_ship"], BASE_SHIP_TYPES["default_jet"])["name"]
     credits_p1 = state.all_player_data["P1"]["credits"]
     
-    current_user_display = state.current_user if state.current_user else "Guest (P1)"
+    current_user_display = state.current_user if state.current_user else "P1 (Guest)"
     is_adm = state.current_user and account.is_admin(state.current_user)
     is_p = state.current_user and account.is_primary_admin(state.current_user)
     admin_tag = " [PRIMARY ADMIN]" if is_p else (" [ADMIN]" if is_adm else "")
     
-    card_w = 320
-    card_h = 490
-    card_gap = 25
-    
-    center_x = SCREEN_WIDTH // 2
-    total_w = 3 * card_w + 2 * card_gap
-    start_x = center_x - total_w // 2
-    y_cards = 150
-
-    card1_x = start_x
-    card2_x = start_x + card_w + card_gap
-    card3_x = start_x + 2 * (card_w + card_gap)
-
-    card1_options = [
+    col1_options = [
         {"text": "Single Player (Classic)", "action": "PLAYING_SINGLE_CLASSIC", "color": (30, 80, 140)},
         {"text": "Single Player (Boss Mode)", "action": "PLAYING_SINGLE_BOSS", "color": (140, 40, 60)},
         {"text": "Local Co-op (Classic)", "action": "PLAYING_MULTI_CLASSIC", "color": (40, 100, 120)},
         {"text": "Local Co-op (Boss Mode)", "action": "PLAYING_MULTI_BOSS", "color": (120, 40, 90)},
-        {"text": "⚙️ Engine Room", "action": "ENGINE_ROOM", "color": (150, 100, 20)},
-        {"text": "📖 STORY CAMPAIGN", "action": "PLAYING_SPINOFF", "color": (180, 0, 80)},
-        {"text": "🔒 SECRET PROTOCOL", "action": "PASSWORD_SCREEN", "color": (100, 0, 0)},
+        {"text": "Engine Room", "action": "ENGINE_ROOM", "color": (150, 100, 20)},
+        {"text": "??? STORY CAMPAIGN ???", "action": "PLAYING_SPINOFF", "color": (180, 0, 80)},
+        {"text": "ENTER SECRET PROTOCOL", "action": "PASSWORD_SCREEN", "color": (100, 0, 0)},
     ]
-
-    card2_options = [
+    
+    col2_options = [
+        {"text": "👤 Account / Login", "action": "ACCOUNT_SCREEN", "color": (50, 70, 110)},
+        {"text": "⚙️ Admin Control Panel", "action": "ADMIN_PANEL", "color": (120, 40, 40)},
         {"text": "Host LAN Game", "action": "HOST_LAN_MENU", "color": (40, 90, 130)},
         {"text": "Join LAN Game", "action": "JOIN_LAN_MENU", "color": (40, 90, 130)},
         {"text": "Host GLOBAL Cloud", "action": "HOST_CLOUD", "color": (100, 0, 150)},
         {"text": "Join GLOBAL Cloud", "action": "JOIN_CLOUD", "color": (100, 0, 150)},
         {"text": "Galactic Web Browser", "action": "WEB_BROWSER", "color": (0, 100, 100)},
-    ]
-
-    card3_options = [
         {"text": "Store / Armory (P1)", "action": "STORE_P1", "color": (60, 110, 50)},
         {"text": "Select Ship (P1)", "action": "SELECT_SHIP_P1", "color": (70, 90, 120)},
-        {"text": "🔊 Audio Settings", "action": "AUDIO_SETTINGS", "color": (30, 80, 140)},
+        {"text": "⚙️ Game & Audio Settings", "action": "AUDIO_SETTINGS", "color": (30, 80, 140)},
         {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "color": (110, 60, 120)},
         {"text": "GUI Level Architect", "action": "LEVEL_EDITOR", "color": (0, 120, 60)},
         {"text": "Quit Game", "action": "QUIT_PROGRAM", "color": (120, 30, 30)},
     ]
 
-    btn_w = card_w - 30
-    btn_h = 44
-    pad_y = 10
+    button_w = 340
+    button_h = 32
+    pad_y = 5
+    
+    center_x = SCREEN_WIDTH // 2
+    col1_x = center_x - button_w - 20
+    col2_x = center_x + 20
+    
+    y_start = 165
 
-    for i, opt in enumerate(card1_options):
-        opt["rect"] = pygame.Rect(card1_x + 15, y_cards + 55 + i * (btn_h + pad_y), btn_w, btn_h)
+    for i, opt in enumerate(col1_options):
+        opt["rect"] = pygame.Rect(col1_x, y_start + i * (38 + 8), button_w, 38)
 
-    for i, opt in enumerate(card2_options):
-        opt["rect"] = pygame.Rect(card2_x + 15, y_cards + 55 + i * (btn_h + pad_y + 8), btn_w, btn_h)
+    for i, opt in enumerate(col2_options):
+        opt["rect"] = pygame.Rect(col2_x, y_start + i * (button_h + pad_y), button_w, button_h)
 
-    for i, opt in enumerate(card3_options):
-        opt["rect"] = pygame.Rect(card3_x + 15, y_cards + 55 + i * (btn_h + pad_y + 4), btn_w, btn_h)
-
-    all_buttons = card1_options + card2_options + card3_options
-
-    header_account_btn = pygame.Rect(center_x + total_w // 2 - 230, 92, 110, 30)
-    header_admin_btn = pygame.Rect(center_x + total_w // 2 - 110, 92, 100, 30)
+    all_buttons = col1_options + col2_options
 
     while True:
         mouse_pos = pygame.mouse.get_pos()
@@ -138,12 +126,6 @@ def show_home_screen(screen, clock):
                 continue
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if header_account_btn.collidepoint(mouse_pos):
-                    sound_manager.play_sfx("ui_click")
-                    return "ACCOUNT_SCREEN"
-                elif header_admin_btn.collidepoint(mouse_pos):
-                    sound_manager.play_sfx("ui_click")
-                    return "ADMIN_PANEL"
                 for opt in all_buttons:
                     if opt["rect"].collidepoint(mouse_pos):
                         sound_manager.play_sfx("ui_click")
@@ -159,82 +141,63 @@ def show_home_screen(screen, clock):
         screen.fill(BLACK)
         draw_stars(screen)
         
-        # Pulsating Title Glow
-        pulse = (math.sin(pygame.time.get_ticks() * 0.003) + 1.0) / 2.0
-        glow_cyan = (int(0 + pulse * 50), int(200 + pulse * 55), 255)
+        # Header & Title
+        draw_text("GALACTIC DEFENDERS", FONT_XLARGE, CYAN, center_x, 50, screen)
         
-        draw_text("GALACTIC DEFENDERS", FONT_XLARGE, (0, 80, 140), center_x + 2, 47, screen)
-        draw_text("GALACTIC DEFENDERS", FONT_XLARGE, glow_cyan, center_x, 45, screen)
-
-        # Top Navigation Bar Card
-        bar_w = total_w
-        bar_rect = pygame.Rect(center_x - bar_w // 2, 85, bar_w, 44)
-        pygame.draw.rect(screen, (18, 24, 40), bar_rect, border_radius=12)
-        pygame.draw.rect(screen, (50, 80, 130), bar_rect, 2, border_radius=12)
-        
+        # Pilot Status Badge
+        badge_w = 640
+        badge_rect = pygame.Rect(center_x - badge_w // 2, 92, badge_w, 36)
+        pygame.draw.rect(screen, (20, 25, 40), badge_rect, border_radius=18)
+        pygame.draw.rect(screen, (60, 90, 140), badge_rect, 2, border_radius=18)
         user_col = YELLOW if is_p else (CYAN if is_adm else WHITE)
-        draw_text(f"PILOT: {current_user_display}{admin_tag}", FONT_SMALL, user_col, bar_rect.x + 15, bar_rect.centery, screen, align="left")
-        draw_text(f"CREDITS: {credits_p1} Cr   |   SHIP: {selected_p1}", FONT_SMALL, LIGHT_GRAY, center_x - 40, bar_rect.centery, screen, align="center")
+        draw_text(f"USER: {current_user_display}{admin_tag}   |   CREDITS: {credits_p1} Cr   |   SHIP: {selected_p1}", FONT_SMALL, user_col, center_x, 110, screen)
+        
+        # Column Headers
+        draw_text("─── MISSION SELECT ───", FONT_SMALL, (150, 180, 220), col1_x + button_w // 2, y_start - 20, screen)
+        draw_text("─── NETWORK & HANGAR ───", FONT_SMALL, (150, 180, 220), col2_x + button_w // 2, y_start - 20, screen)
+        
+        # Draw Buttons
+        for opt in all_buttons:
+            is_hover = opt["rect"].collidepoint(mouse_pos)
+            base_col = opt.get("color", BUTTON_COLOR)
+            c = BUTTON_HOVER_COLOR if is_hover else base_col
+            pygame.draw.rect(screen, c, opt["rect"], border_radius=8)
+            pygame.draw.rect(screen, (200, 220, 255) if is_hover else (60, 70, 90), opt["rect"], 2 if is_hover else 1, border_radius=8)
+            draw_text(opt["text"], FONT_MEDIUM if opt in col1_options else FONT_SMALL, WHITE, opt["rect"].centerx, opt["rect"].centery, screen)
 
-        h_acc = header_account_btn.collidepoint(mouse_pos)
-        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if h_acc else (30, 60, 100), header_account_btn, border_radius=8)
-        pygame.draw.rect(screen, CYAN if h_acc else (60, 90, 130), header_account_btn, 1, border_radius=8)
-        draw_text("👤 Account", FONT_SMALL, WHITE, header_account_btn.centerx, header_account_btn.centery, screen)
-
-        h_adm = header_admin_btn.collidepoint(mouse_pos)
-        pygame.draw.rect(screen, (140, 40, 40) if h_adm else (100, 30, 30), header_admin_btn, border_radius=8)
-        pygame.draw.rect(screen, RED if h_adm else (140, 60, 60), header_admin_btn, 1, border_radius=8)
-        draw_text("⚙️ Admin", FONT_SMALL, WHITE, header_admin_btn.centerx, header_admin_btn.centery, screen)
-
-        cards_info = [
-            {"x": card1_x, "title": "🚀 MISSION SELECT", "color": (0, 180, 220), "options": card1_options},
-            {"x": card2_x, "title": "🌐 MULTIPLAYER & CLOUD", "color": (160, 80, 220), "options": card2_options},
-            {"x": card3_x, "title": "🛸 HANGAR & SYSTEM", "color": (60, 200, 120), "options": card3_options},
-        ]
-
-        for c_info in cards_info:
-            c_rect = pygame.Rect(c_info["x"], y_cards, card_w, card_h)
-            pygame.draw.rect(screen, (14, 18, 30), c_rect, border_radius=12)
-            pygame.draw.rect(screen, (40, 60, 90), c_rect, 2, border_radius=12)
-
-            header_rect = pygame.Rect(c_info["x"] + 10, y_cards + 10, card_w - 20, 34)
-            pygame.draw.rect(screen, (22, 32, 50), header_rect, border_radius=8)
-            draw_text(c_info["title"], FONT_SMALL, c_info["color"], header_rect.centerx, header_rect.centery, screen)
-
-            for opt in c_info["options"]:
-                is_hover = opt["rect"].collidepoint(mouse_pos)
-                b_rect = opt["rect"].copy()
-                if is_hover:
-                    b_rect.inflate_ip(4, 2)
-                
-                base_col = opt.get("color", BUTTON_COLOR)
-                c_fill = BUTTON_HOVER_COLOR if is_hover else base_col
-                c_border = (0, 220, 255) if is_hover else (60, 75, 100)
-                
-                pygame.draw.rect(screen, c_fill, b_rect, border_radius=8)
-                pygame.draw.rect(screen, c_border, b_rect, 2 if is_hover else 1, border_radius=8)
-                draw_text(opt["text"], FONT_MEDIUM if len(opt["text"]) < 24 else FONT_SMALL, WHITE, b_rect.centerx, b_rect.centery, screen)
-
-        draw_text("Press TAB for MegaHack Menu  |  F12 Admin Controls  |  ESC Quit", FONT_SMALL, (130, 140, 160), center_x, SCREEN_HEIGHT - 22, screen)
+        # Bottom shortcut info
+        draw_text("Press TAB for MegaHack Menu  |  F12 Admin Controls  |  ESC Quit", FONT_SMALL, (120, 130, 150), center_x, SCREEN_HEIGHT - 25, screen)
 
         megahack.draw(screen)
         pygame.display.flip()
         clock.tick(int(FPS * state.GAME_SPEED))
 
 def show_store_screen(screen, clock, player_id_str):
-    player_data = state.all_player_data[player_id_str]
+    player_id_key = str(player_id_str).upper()
+    if player_id_key not in state.all_player_data:
+        player_id_key = "P1"
+    player_data = state.all_player_data[player_id_key]
+    player_data.setdefault("credits", 0)
+    player_data.setdefault("owned_ships", ["default_jet"])
+    player_data.setdefault("unlocked_powers", ["power_autoshield"])
     has_mod_loader = "power_modloader" in player_data["unlocked_powers"]
     btn_h, pad, start_y, fixed_title_y = 60, 20, 150, 70
     store_items = []
 
     for ship_key, ship_data in state.SHIP_TYPES.items():
-        if ship_key == "default_jet" or ship_data["cost"] in ["CHIP_RARE", "CHIP_EPIC"]: continue
-        cost_display = "FREE (Mod Loader)" if (has_mod_loader and ship_data.get("from_datapack", False)) else f"Cost: {ship_data['cost']} Cr"
-        store_items.append({"key": ship_key, "text": f"{ship_data['name']} - {cost_display}", "original_y": 0, "rect": None, "data": ship_data, "is_owned": ship_key in player_data["owned_ships"], "desc": ship_data["desc"]})
+        if ship_key == "default_jet" or ship_data.get("cost") in ["CHIP_RARE", "CHIP_EPIC"]: continue
+        cost_val = ship_data.get("cost", 0)
+        cost_display = "FREE (Mod Loader)" if (has_mod_loader and ship_data.get("from_datapack", False)) else f"Cost: {cost_val} Cr"
+        ship_name = ship_data.get("name", ship_key.replace("_", " ").title())
+        ship_desc = ship_data.get("desc", "Custom Starship")
+        store_items.append({"key": ship_key, "text": f"{ship_name} - {cost_display}", "original_y": 0, "rect": None, "data": ship_data, "is_owned": ship_key in player_data["owned_ships"], "desc": ship_desc})
 
     for helper_key, helper_data in state.HELPER_TYPES.items():
-        cost_display = "FREE (Mod Loader)" if (has_mod_loader and helper_data.get("from_datapack", False)) else f"Cost: {helper_data['cost']} Cr"
-        store_items.append({"key": helper_key, "text": f"{helper_data['name']} - {cost_display}", "original_y": 0, "rect": None, "data": helper_data, "is_helper": True, "is_owned": helper_key in player_data["unlocked_powers"], "desc": helper_data["desc"]})
+        cost_val = helper_data.get("cost", 0)
+        cost_display = "FREE (Mod Loader)" if (has_mod_loader and helper_data.get("from_datapack", False)) else f"Cost: {cost_val} Cr"
+        helper_name = helper_data.get("name", helper_key.replace("_", " ").title())
+        helper_desc = helper_data.get("desc", "Custom Helper Unit")
+        store_items.append({"key": helper_key, "text": f"{helper_name} - {cost_display}", "original_y": 0, "rect": None, "data": helper_data, "is_helper": True, "is_owned": helper_key in player_data["unlocked_powers"], "desc": helper_desc})
 
     for i, item in enumerate(store_items):
         item["original_y"] = start_y + i * (btn_h + pad + 20)
@@ -255,7 +218,7 @@ def show_store_screen(screen, clock, player_id_str):
                         item_rect = item["rect"].copy()
                         item_rect.centery = item["original_y"] + scroll_offset
                         if item_rect.collidepoint(mouse_pos) and not item.get("is_owned", False):
-                            item_cost = 0 if (has_mod_loader and item["data"].get("from_datapack", False)) else item["data"]["cost"]
+                            item_cost = 0 if (has_mod_loader and item["data"].get("from_datapack", False)) else item["data"].get("cost", 0)
                             if isinstance(item_cost, int) and player_data["credits"] >= item_cost:
                                 player_data["credits"] -= item_cost
                                 if item.get("is_helper", False): player_data["unlocked_powers"].append(item["key"])
@@ -278,7 +241,7 @@ def show_store_screen(screen, clock, player_id_str):
                 sound_manager.play_sfx("ui_click")
                 return "HOME"
 
-        draw_scrollable_menu(screen, store_items, scroll_offset, mouse_pos, f"{player_id_str}'s Armory", FONT_LARGE, YELLOW, fixed_title_y, currency=f"Credits: {player_data['credits']}")
+        draw_scrollable_menu(screen, store_items, scroll_offset, mouse_pos, f"{player_id_key}'s Armory", FONT_LARGE, YELLOW, fixed_title_y, currency=f"Credits: {player_data['credits']}")
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
         draw_text("Back to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
         
@@ -287,15 +250,23 @@ def show_store_screen(screen, clock, player_id_str):
         clock.tick(int(FPS * state.GAME_SPEED))
 
 def show_ship_selection_screen(screen, clock, player_id_str):
-    player_data = state.all_player_data[player_id_str]
+    player_id_key = str(player_id_str).upper()
+    if player_id_key not in state.all_player_data:
+        player_id_key = "P1"
+    player_data = state.all_player_data[player_id_key]
+    player_data.setdefault("credits", 0)
+    player_data.setdefault("owned_ships", ["default_jet"])
+    player_data.setdefault("selected_ship", "default_jet")
     start_y, fixed_title_y = 150, 70
     selectable_ships = []
 
     for ship_key in player_data["owned_ships"]:
         ship_data = state.SHIP_TYPES.get(ship_key)
         if not ship_data: continue
-        text = ship_data["name"] + (" [SELECTED]" if ship_key == player_data["selected_ship"] else "")
-        selectable_ships.append({"key": ship_key, "text": text, "original_y": 0, "rect": None, "data": ship_data, "desc": ship_data["desc"]})
+        name = ship_data.get("name", ship_key.replace("_", " ").title())
+        desc = ship_data.get("desc", "Custom Starship")
+        text = name + (" [SELECTED]" if ship_key == player_data.get("selected_ship") else "")
+        selectable_ships.append({"key": ship_key, "text": text, "original_y": 0, "rect": None, "data": ship_data, "desc": desc})
 
     for i, item in enumerate(selectable_ships):
         item["original_y"] = start_y + i * 85
@@ -342,21 +313,67 @@ def show_ship_selection_screen(screen, clock, player_id_str):
         clock.tick(int(FPS * state.GAME_SPEED))
 
 def show_mod_loader_screen(screen, clock):
-    start_y, fixed_title_y = 150, 70
-    back_btn = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT - 60, 200, 50)
+    start_y, fixed_title_y = 155, 60
+    center_x = SCREEN_WIDTH // 2
+    
+    enable_all_btn = pygame.Rect(center_x - 300, 105, 140, 36)
+    disable_all_btn = pygame.Rect(center_x - 150, 105, 140, 36)
+    install_demo_btn = pygame.Rect(center_x + 5, 105, 175, 36)
+    back_btn = pygame.Rect(center_x + 190, 105, 110, 36)
+    
     scroll_offset = 0
+    toast_msg = ""
+    toast_color = WIN_GREEN
+    toast_time = 0
 
     while True:
-        mod_files = [f for f in os.listdir(BASE_DIR) if f.endswith(".json") and f not in ["galactic_defender_progress.json", "mod_config.json", "custom_level.json"]]
+        mods_dir = os.path.join(BASE_DIR, "mods")
+        os.makedirs(mods_dir, exist_ok=True)
+        
+        mod_files = sorted([f for f in os.listdir(mods_dir) if f.endswith(".json")])
+        for f in sorted(os.listdir(BASE_DIR)):
+            if f.endswith(".json") and f not in ["galactic_defender_progress.json", "mod_config.json", "custom_level.json", "audio_config.json", "users.json"] and f not in mod_files:
+                mod_files.append(f)
+        
         mod_items = []
         for i, f_name in enumerate(mod_files):
             is_active = f_name in state.active_mods
-            mod_items.append({"key": f_name, "text": f"{f_name} - [{'ON' if is_active else 'OFF'}]", "original_y": start_y + i * 80, "rect": pygame.Rect(SCREEN_WIDTH // 2 - 250, start_y + i * 80, 500, 60), "override_color": MOD_ON_COLOR if is_active else MOD_OFF_COLOR})
+            display_name = f_name
+            desc_text = "Datapack Mod"
+            
+            try:
+                mod_path = os.path.join(mods_dir, f_name) if os.path.exists(os.path.join(mods_dir, f_name)) else os.path.join(BASE_DIR, f_name)
+                with open(mod_path, "r") as f:
+                    mod_data = json.load(f)
+                display_name = mod_data.get("name", f_name)
+                
+                ships_cnt = len(mod_data.get("ships", {}))
+                helpers_cnt = len(mod_data.get("helpers", {}))
+                powerups_cnt = len(mod_data.get("powerups", {}))
+                parts = []
+                if ships_cnt > 0: parts.append(f"{ships_cnt} Ships")
+                if helpers_cnt > 0: parts.append(f"{helpers_cnt} Helpers")
+                if powerups_cnt > 0: parts.append(f"{powerups_cnt} Powerups")
+                desc_text = "Contains: " + (", ".join(parts) if parts else "Custom Datapack Content")
+            except Exception:
+                pass
+                
+            mod_items.append({
+                "key": f_name, 
+                "text": f"{display_name} [{'ACTIVE' if is_active else 'DISABLED'}]", 
+                "desc": desc_text,
+                "is_active": is_active,
+                "original_y": start_y + i * 80, 
+                "rect": pygame.Rect(center_x - 300, start_y + i * 80, 600, 68), 
+                "override_color": (0, 100, 60) if is_active else (60, 30, 40)
+            })
 
         mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
-            if event.type == pygame.QUIT: return "QUIT_PROGRAM"
-            if megahack.handle_event(event): continue
+            if event.type == pygame.QUIT: 
+                return "QUIT_PROGRAM"
+            if megahack.handle_event(event): 
+                continue
                 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
@@ -364,15 +381,93 @@ def show_mod_loader_screen(screen, clock):
                         item_rect = item["rect"].copy()
                         item_rect.centery = item["original_y"] + scroll_offset
                         if item_rect.collidepoint(mouse_pos):
-                            if item["key"] in state.active_mods: state.active_mods.remove(item["key"])
-                            else: state.active_mods.append(item["key"])
+                            if item["key"] in state.active_mods: 
+                                state.active_mods.remove(item["key"])
+                                toast_msg = f"🔌 UNLOADED MOD: '{item['key']}'"
+                                toast_color = RED
+                            else: 
+                                state.active_mods.append(item["key"])
+                                toast_msg = f"✅ LOADED MOD: '{item['key']}' — Unlocked in Hangar & Store!"
+                                toast_color = WIN_GREEN
                             state.save_mod_config()
                             state.reload_mods()
+                            state.save_game_progress()
                             sound_manager.play_sfx("hack_toggle")
-                    if back_btn.collidepoint(mouse_pos): 
+                            toast_time = pygame.time.get_ticks()
+                            
+                    if enable_all_btn.collidepoint(mouse_pos):
+                        state.active_mods = list(mod_files)
+                        state.save_mod_config()
+                        state.reload_mods()
+                        state.save_game_progress()
+                        sound_manager.play_sfx("hack_toggle")
+                        toast_msg = "✅ ALL MODS LOADED IN GAME!"
+                        toast_color = WIN_GREEN
+                        toast_time = pygame.time.get_ticks()
+
+                    elif disable_all_btn.collidepoint(mouse_pos):
+                        state.active_mods = []
+                        state.save_mod_config()
+                        state.reload_mods()
+                        state.save_game_progress()
+                        sound_manager.play_sfx("hack_toggle")
+                        toast_msg = "🔌 ALL MODS UNLOADED"
+                        toast_color = YELLOW
+                        toast_time = pygame.time.get_ticks()
+
+                    elif install_demo_btn.collidepoint(mouse_pos):
+                        demo_path = os.path.join(mods_dir, "cyber_strike.json")
+                        demo_data = {
+                            "name": "Cyber Strike Pack",
+                            "ships": {
+                                "cyber_strike_x": {
+                                    "name": "Cyber Strike X",
+                                    "desc": "Ultra-light experimental interceptor built for high-speed plasma assaults.",
+                                    "max_health": 250,
+                                    "speed": 18,
+                                    "base_speed": 18,
+                                    "shoot_delay": 55,
+                                    "start_blasters": 4,
+                                    "color": [0, 255, 200],
+                                    "wing_color": [255, 0, 150],
+                                    "cost": 0,
+                                    "unlocked_by_default": True
+                                }
+                            },
+                            "helpers": {
+                                "plasma_drone": {
+                                    "name": "Plasma Interceptor Drone",
+                                    "desc": "Automated plasma defense orb.",
+                                    "cost": 0,
+                                    "shoot_delay": 120,
+                                    "color": [0, 255, 200],
+                                    "unlocked_by_default": True
+                                }
+                            }
+                        }
+                        try:
+                            with open(demo_path, "w") as f:
+                                json.dump(demo_data, f, indent=4)
+                            if "cyber_strike.json" not in state.active_mods:
+                                state.active_mods.append("cyber_strike.json")
+                            state.save_mod_config()
+                            state.reload_mods()
+                            state.save_game_progress()
+                            sound_manager.play_sfx("hack_toggle")
+                            toast_msg = "✨ INSTALLED DEMO MOD! 'Cyber Strike X' unlocked in Hangar!"
+                            toast_color = WIN_GREEN
+                            toast_time = pygame.time.get_ticks()
+                        except Exception as e:
+                            toast_msg = f"Failed to install demo mod: {e}"
+                            toast_color = RED
+                            toast_time = pygame.time.get_ticks()
+
+                    elif back_btn.collidepoint(mouse_pos): 
                         sound_manager.play_sfx("ui_click")
                         return "HOME"
-                elif event.button == 4: scroll_offset = min(scroll_offset + 80, 0)
+
+                elif event.button == 4: 
+                    scroll_offset = min(scroll_offset + 80, 0)
                 elif event.button == 5:
                     if mod_items:
                         max_scroll = -((mod_items[-1]["original_y"] - start_y + 80) - (SCREEN_HEIGHT - (fixed_title_y + 120)))
@@ -382,10 +477,30 @@ def show_mod_loader_screen(screen, clock):
                 sound_manager.play_sfx("ui_click")
                 return "HOME"
 
-        draw_scrollable_menu(screen, mod_items, scroll_offset, mouse_pos, "MOD LOADER", FONT_LARGE, MAGENTA, fixed_title_y)
-        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
-        draw_text("Back to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
+        draw_scrollable_menu(screen, mod_items, scroll_offset, mouse_pos, "DATAPACK MOD LOADER", FONT_LARGE, MAGENTA, fixed_title_y)
         
+        h_ena = enable_all_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, (0, 140, 60) if h_ena else (0, 90, 40), enable_all_btn, border_radius=6)
+        draw_text("⚡ Enable All", FONT_SMALL, WHITE, enable_all_btn.centerx, enable_all_btn.centery, screen)
+
+        h_dis = disable_all_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, (140, 40, 40) if h_dis else (90, 30, 30), disable_all_btn, border_radius=6)
+        draw_text("🔌 Disable All", FONT_SMALL, WHITE, disable_all_btn.centerx, disable_all_btn.centery, screen)
+
+        h_demo = install_demo_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, (120, 40, 140) if h_demo else (80, 20, 100), install_demo_btn, border_radius=6)
+        draw_text("✨ Install Demo Mod", FONT_SMALL, WHITE, install_demo_btn.centerx, install_demo_btn.centery, screen)
+
+        h_back = back_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if h_back else BUTTON_COLOR, back_btn, border_radius=6)
+        draw_text("⬅ Home", FONT_SMALL, WHITE, back_btn.centerx, back_btn.centery, screen)
+
+        if toast_msg and pygame.time.get_ticks() - toast_time < 3500:
+            toast_bg = pygame.Rect(center_x - 300, SCREEN_HEIGHT - 55, 600, 36)
+            pygame.draw.rect(screen, (20, 25, 40), toast_bg, border_radius=8)
+            pygame.draw.rect(screen, toast_color, toast_bg, 2, border_radius=8)
+            draw_text(toast_msg, FONT_SMALL, toast_color, center_x, toast_bg.centery, screen)
+
         megahack.draw(screen)
         pygame.display.flip()
         clock.tick(int(FPS * state.GAME_SPEED))
@@ -852,64 +967,244 @@ def show_admin_options(screen, clock):
 
 def show_web_browser_screen(screen, clock):
     current_url = "http://galactic.net/home"
+    history = [current_url]
+    history_idx = 0
+    is_typing_url = False
+    typed_url = ""
+    
+    # Mod Maker States
+    mod_name_input = ""
+    mod_desc_input = ""
+    active_input = None
+    
+    import threading
+    import requests
+    import json
+    
+    API_URL = "https://api.restful-api.dev/objects/ff808181a09d98f701a0de960ca21ed3"
+    cached_global_mods = []
+    is_loading_mods = False
+    
+    def fetch_global_mods():
+        nonlocal cached_global_mods, is_loading_mods
+        if is_loading_mods: return
+        is_loading_mods = True
+        try:
+            res = requests.get(API_URL, timeout=3).json()
+            cached_global_mods = res.get("data", {}).get("mods", [])
+        except: pass
+        finally: is_loading_mods = False
+
+    def publish_global_mod(new_mod):
+        nonlocal cached_global_mods
+        cached_global_mods.append(new_mod)
+        try:
+            requests.put(API_URL, json={"name": "mods", "data": {"mods": cached_global_mods}}, timeout=3)
+        except: pass
+
+    # Fetch initial mods on startup in a thread
+    threading.Thread(target=fetch_global_mods, daemon=True).start()
+
+    # Easter Egg States
+    dvd_mode = False
+    bx, by = SCREEN_WIDTH // 2 - 450, SCREEN_HEIGHT // 2 - 325
+    bdx, bdy = 4, 3
+    matrix_mode = False
+    matrix_chars = []
+    import random
 
     while True:
         mouse_pos = pygame.mouse.get_pos()
+        
+        if dvd_mode:
+            bx += bdx
+            by += bdy
+            if bx <= 0 or bx + 900 >= SCREEN_WIDTH: bdx *= -1
+            if by <= 0 or by + 650 >= SCREEN_HEIGHT: bdy *= -1
+        else:
+            bx, by = SCREEN_WIDTH // 2 - 450, SCREEN_HEIGHT // 2 - 325
+            
+        browser_w, browser_h = 900, 650
+        
+        home_rect = pygame.Rect(bx + 10, by + 5, 50, 30)
+        back_rect = pygame.Rect(bx + 65, by + 5, 30, 30)
+        fwd_rect = pygame.Rect(bx + 100, by + 5, 30, 30)
+        url_bar_rect = pygame.Rect(bx + 140, by + 5, browser_w - 190, 30)
+        close_rect = pygame.Rect(bx + browser_w - 40, by + 5, 30, 30)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT: return "QUIT_PROGRAM"
             if megahack.handle_event(event): continue
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                bx, by = SCREEN_WIDTH // 2 - 450, SCREEN_HEIGHT // 2 - 325
-                browser_w, browser_h = 900, 650
+                is_typing_url = False # defocus by default
                 
-                if pygame.Rect(bx + browser_w - 40, by + 5, 30, 30).collidepoint(mouse_pos): return "HOME"
-                if pygame.Rect(bx + 10, by + 5, 60, 30).collidepoint(mouse_pos): current_url = "http://galactic.net/home"
+                if close_rect.collidepoint(mouse_pos): return "HOME"
+                if url_bar_rect.collidepoint(mouse_pos):
+                    is_typing_url = True
+                    typed_url = current_url
+                    
+                if home_rect.collidepoint(mouse_pos): 
+                    current_url = "http://galactic.net/home"
+                    history = history[:history_idx+1]
+                    history.append(current_url)
+                    history_idx += 1
+                if back_rect.collidepoint(mouse_pos) and history_idx > 0:
+                    history_idx -= 1
+                    current_url = history[history_idx]
+                if fwd_rect.collidepoint(mouse_pos) and history_idx < len(history) - 1:
+                    history_idx += 1
+                    current_url = history[history_idx]
                 
+                # Handling page links
                 if current_url == "http://galactic.net/home":
-                    if pygame.Rect(bx+250, by+250, 400, 50).collidepoint(mouse_pos): current_url = "http://darknet.galactic/megahack"
-                    if pygame.Rect(bx+250, by+320, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/shipyard"
-                    if pygame.Rect(bx+250, by+390, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/bounties"
+                    if pygame.Rect(bx+250, by+190, 400, 50).collidepoint(mouse_pos): current_url = "http://darknet.galactic/megahack"
+                    if pygame.Rect(bx+250, by+260, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/shipyard"
+                    if pygame.Rect(bx+250, by+330, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/news"
+                    if pygame.Rect(bx+250, by+400, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/mods"
+                    
+                    if current_url != "http://galactic.net/home":
+                        history = history[:history_idx+1]
+                        history.append(current_url)
+                        history_idx += 1
                         
                 elif current_url == "http://darknet.galactic/megahack":
-                    # Instant download bypass because we removed the restriction!
                     if pygame.Rect(bx+300, by+350, 300, 60).collidepoint(mouse_pos): 
                         state.all_player_data["P1"]["has_downloaded_cheat_menu"] = True
                         state.save_game_progress()
                         
+                elif current_url == "http://galactic.net/mods":
+                    has_loader = "power_modloader" in state.all_player_data["P1"]["unlocked_powers"]
+                    if not has_loader:
+                        if pygame.Rect(bx+300, by+200, 300, 60).collidepoint(mouse_pos):
+                            state.all_player_data["P1"]["unlocked_powers"].append("power_modloader")
+                            state.save_game_progress()
+                            sound_manager.play_sfx("ui_click")
+                    else:
+                        create_btn = pygame.Rect(bx + browser_w - 250, by + 100, 200, 40)
+                        if create_btn.collidepoint(mouse_pos):
+                            current_url = "http://galactic.net/mods/create"
+                            history = history[:history_idx+1]
+                            history.append(current_url)
+                            history_idx += 1
+                        else:
+                            for i, m in enumerate(cached_global_mods[:5]):
+                                y = by + 180 + i * 70
+                                dl_mod_btn = pygame.Rect(bx + 100 + browser_w - 380, y + 10, 150, 40)
+                                if dl_mod_btn.collidepoint(mouse_pos):
+                                    mods_dir = os.path.join(BASE_DIR, "mods")
+                                    os.makedirs(mods_dir, exist_ok=True)
+                                    mod_path = os.path.join(mods_dir, m["fname"])
+                                    if not os.path.exists(mod_path):
+                                        with open(mod_path, "w") as f: f.write(m["json_str"])
+                                        sound_manager.play_sfx("hack_toggle")
+                                        
+                elif current_url == "http://galactic.net/mods/create":
+                    name_rect = pygame.Rect(bx + 200, by + 200, 400, 40)
+                    desc_rect = pygame.Rect(bx + 200, by + 300, 400, 40)
+                    publish_rect = pygame.Rect(bx + 300, by + 400, 300, 50)
+                    
+                    if name_rect.collidepoint(mouse_pos): active_input = "NAME"
+                    elif desc_rect.collidepoint(mouse_pos): active_input = "DESC"
+                    else: active_input = None
+                    
+                    if publish_rect.collidepoint(mouse_pos) and mod_name_input.strip() and mod_desc_input.strip():
+                        import random
+                        fname = mod_name_input.lower().replace(" ", "_")[:15] + f"_{random.randint(100,999)}.json"
+                        mult = round(random.uniform(1.5, 3.0), 1)
+                        stat = random.choice(["damage_multiplier", "speed_multiplier", "health_multiplier"])
+                        jstr = json.dumps({"name": mod_name_input, "cost": 0, "from_datapack": True, "player_stats": {stat: mult}})
+                        
+                        threading.Thread(target=publish_global_mod, args=({"name": mod_name_input, "fname": fname, "desc": mod_desc_input, "json_str": jstr},), daemon=True).start()
+                        
+                        mod_name_input = ""
+                        mod_desc_input = ""
+                        current_url = "http://galactic.net/mods"
+                        history = history[:history_idx+1]
+                        history.append(current_url)
+                        history_idx += 1
+                        sound_manager.play_sfx("victory")
+
                 elif current_url == "http://galactic.net/shipyard":
                     if pygame.Rect(bx+250, by+300, 400, 80).collidepoint(mouse_pos) and state.all_player_data["P1"]["credits"] >= 8000:
                         state.all_player_data["P1"]["credits"] -= 8000
                         state.all_player_data["P1"]["owned_ships"].append("shadow_wraith")
                         state.save_game_progress()
             
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE: return "HOME"
+            if event.type == pygame.KEYDOWN:
+                if is_typing_url:
+                    if event.key == pygame.K_RETURN:
+                        is_typing_url = False
+                        if typed_url != current_url:
+                            if not typed_url.startswith("http://"): typed_url = "http://" + typed_url
+                            
+                            # Easter Eggs Checks
+                            if typed_url == "http://galactic.net/bounce":
+                                dvd_mode = not dvd_mode
+                                typed_url = history[history_idx] # cancel navigation
+                            elif typed_url == "http://galactic.net/matrix":
+                                matrix_mode = True
+                                # Init matrix lines
+                                matrix_chars = [{"x": random.randint(0, SCREEN_WIDTH), "y": random.randint(-600, 0), "speed": random.randint(5, 15)} for _ in range(100)]
+                                typed_url = history[history_idx] # cancel navigation
+                            elif typed_url == "http://galactic.net/askew":
+                                typed_url = history[history_idx]
+                                bx += 30
+                                by += 40
+                            else:
+                                matrix_mode = False
+                                current_url = typed_url
+                                history = history[:history_idx+1]
+                                history.append(current_url)
+                                history_idx += 1
+                    elif event.key == pygame.K_ESCAPE:
+                        is_typing_url = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        typed_url = typed_url[:-1]
+                    elif event.unicode.isprintable():
+                        typed_url += event.unicode
+                elif active_input == "NAME":
+                    if event.key == pygame.K_BACKSPACE: mod_name_input = mod_name_input[:-1]
+                    elif event.unicode.isprintable() and len(mod_name_input) < 30: mod_name_input += event.unicode
+                elif active_input == "DESC":
+                    if event.key == pygame.K_BACKSPACE: mod_desc_input = mod_desc_input[:-1]
+                    elif event.unicode.isprintable() and len(mod_desc_input) < 50: mod_desc_input += event.unicode
+                else:
+                    if event.key == pygame.K_ESCAPE: return "HOME"
 
         screen.fill((20, 40, 60))
-        bx, by = SCREEN_WIDTH // 2 - 450, SCREEN_HEIGHT // 2 - 325
-        browser_w, browser_h = 900, 650
         
         # Browser Frame
         pygame.draw.rect(screen, (200, 200, 200), (bx, by, browser_w, browser_h), border_radius=8)
         pygame.draw.rect(screen, (150, 150, 150), (bx, by, browser_w, 40), border_radius=8)
         pygame.draw.rect(screen, (10, 15, 20), (bx, by + 40, browser_w, browser_h - 40), border_bottom_left_radius=8, border_bottom_right_radius=8)
         
+        # Navigation Buttons
+        pygame.draw.rect(screen, DARK_GRAY, home_rect, border_radius=4)
+        draw_text("HOME", FONT_SMALL, WHITE, home_rect.centerx, home_rect.centery, screen)
+        
+        back_col = DARK_GRAY if history_idx > 0 else (100, 100, 100)
+        pygame.draw.rect(screen, back_col, back_rect, border_radius=4)
+        draw_text("<", FONT_SMALL, WHITE, back_rect.centerx, back_rect.centery, screen)
+        
+        fwd_col = DARK_GRAY if history_idx < len(history) - 1 else (100, 100, 100)
+        pygame.draw.rect(screen, fwd_col, fwd_rect, border_radius=4)
+        draw_text(">", FONT_SMALL, WHITE, fwd_rect.centerx, fwd_rect.centery, screen)
+        
         # Address Bar
-        pygame.draw.rect(screen, DARK_GRAY, pygame.Rect(bx + 10, by + 5, 60, 30), border_radius=4)
-        draw_text("HOME", FONT_SMALL, WHITE, bx + 40, by + 20, screen)
+        url_color = (255, 255, 200) if is_typing_url else WHITE
+        pygame.draw.rect(screen, url_color, url_bar_rect, border_radius=4)
+        display_url = typed_url + ("|" if (pygame.time.get_ticks()//500)%2==0 and is_typing_url else "") if is_typing_url else current_url
+        draw_text(display_url, FONT_SMALL, BLACK, url_bar_rect.left + 10, url_bar_rect.centery, screen, align="left")
         
-        url_bar_rect = pygame.Rect(bx + 80, by + 5, browser_w - 130, 30)
-        pygame.draw.rect(screen, WHITE, url_bar_rect, border_radius=4)
-        draw_text(current_url, FONT_SMALL, BLACK, url_bar_rect.left + 10, url_bar_rect.centery, screen, align="left")
-        
-        pygame.draw.rect(screen, RED, pygame.Rect(bx + browser_w - 40, by + 5, 30, 30), border_radius=4)
-        draw_text("X", FONT_SMALL, WHITE, bx + browser_w - 25, by + 20, screen)
+        pygame.draw.rect(screen, RED, close_rect, border_radius=4)
+        draw_text("X", FONT_SMALL, WHITE, close_rect.centerx, close_rect.centery, screen)
         
         # Page Content
         if current_url == "http://galactic.net/home":
             draw_text("GALACTIC WEB PORTAL", FONT_LARGE, CYAN, bx + browser_w//2, by + 120, screen)
-            link1, link2, link3 = pygame.Rect(bx+250, by+230, 400, 50), pygame.Rect(bx+250, by+300, 400, 50), pygame.Rect(bx+250, by+370, 400, 50)
-            for r, t, col in [(link1, "▶ Darknet: MegaHack v7", MAGENTA), (link2, "▶ Black Market Shipyard", ORANGE), (link3, "▶ Bounty Board", YELLOW)]:
+            link1, link2, link3, link4 = pygame.Rect(bx+250, by+190, 400, 50), pygame.Rect(bx+250, by+260, 400, 50), pygame.Rect(bx+250, by+330, 400, 50), pygame.Rect(bx+250, by+400, 400, 50)
+            for r, t, col in [(link1, "▶ Darknet: MegaHack v7", MAGENTA), (link2, "▶ Black Market Shipyard", ORANGE), (link3, "▶ Galactic News Network", YELLOW), (link4, "▶ Modding Community Hub", (100, 255, 100))]:
                 pygame.draw.rect(screen, (50, 50, 80), r, border_radius=8)
                 pygame.draw.rect(screen, (80, 80, 120), r, 2, border_radius=8)
                 draw_text(t, FONT_MEDIUM, col, r.centerx, r.centery, screen)
@@ -929,9 +1224,81 @@ def show_web_browser_screen(screen, clock):
             msg = "OWNED" if "shadow_wraith" in state.all_player_data["P1"]["owned_ships"] else "BUY 'SHADOW WRAITH' - 8000 Cr"
             draw_text(msg, FONT_MEDIUM, WHITE, buy_btn.centerx, buy_btn.centery, screen)
             
-        elif current_url == "http://galactic.net/bounties":
-            draw_text("BOUNTY BOARD", FONT_LARGE, YELLOW, bx + browser_w//2, by + 150, screen)
-            draw_text("Bounties currently disabled by Galactic Federation.", FONT_MEDIUM, RED, bx + browser_w//2, by + 300, screen)
+        elif current_url == "http://galactic.net/news":
+            draw_text("GALACTIC NEWS NETWORK", FONT_LARGE, YELLOW, bx + browser_w//2, by + 120, screen)
+            draw_text("Breaking: Unprecedented anomaly detected in Sector 5.", FONT_SMALL, LIGHT_GRAY, bx + 50, by + 200, screen, align="left")
+            draw_text("Rumors of an 'Omega Overlord' returning have caused panic.", FONT_SMALL, LIGHT_GRAY, bx + 50, by + 250, screen, align="left")
+            draw_text("Prices of illegal 'Shadow Wraith' ships surge in black market.", FONT_SMALL, LIGHT_GRAY, bx + 50, by + 300, screen, align="left")
+            draw_text("Galactic Federation suspends all bounty payouts indefinitely.", FONT_SMALL, LIGHT_GRAY, bx + 50, by + 350, screen, align="left")
+
+        elif current_url == "http://galactic.net/mods":
+            draw_text("COMMUNITY MODS HUB", FONT_LARGE, (100, 255, 100), bx + browser_w//2, by + 100, screen)
+            has_loader = "power_modloader" in state.all_player_data["P1"]["unlocked_powers"]
+            
+            if not has_loader:
+                dl_loader_btn = pygame.Rect(bx+300, by+200, 300, 60)
+                pygame.draw.rect(screen, BUTTON_COLOR, dl_loader_btn, border_radius=10)
+                draw_text("DOWNLOAD MOD LOADER", FONT_MEDIUM, WHITE, dl_loader_btn.centerx, dl_loader_btn.centery, screen)
+            else:
+                draw_text("Mod Loader Installed! Browse hundreds of mods.", FONT_SMALL, WHITE, bx + browser_w//2, by + 140, screen)
+                create_btn = pygame.Rect(bx + browser_w - 250, by + 100, 200, 40)
+                pygame.draw.rect(screen, (50, 150, 250), create_btn, border_radius=5)
+                draw_text("CREATE NEW MOD", FONT_SMALL, WHITE, create_btn.centerx, create_btn.centery, screen)
+                
+                if is_loading_mods:
+                    draw_text("Syncing with Global Cloud...", FONT_MEDIUM, YELLOW, bx + browser_w//2, by + 300, screen)
+                else:
+                    for i, m in enumerate(cached_global_mods[:5]):
+                        y = by + 180 + i * 70
+                    x = bx + 100
+                    pygame.draw.rect(screen, (40, 40, 60), (x, y, browser_w - 200, 60), border_radius=8)
+                    draw_text(m["name"], FONT_MEDIUM, YELLOW, x + 20, y + 30, screen, align="left")
+                    draw_text(m["desc"], FONT_SMALL, LIGHT_GRAY, x + 250, y + 30, screen, align="left")
+                    dl_mod_btn = pygame.Rect(x + browser_w - 380, y + 10, 150, 40)
+                    is_installed = os.path.exists(os.path.join(BASE_DIR, "mods", m["fname"]))
+                    
+                    pygame.draw.rect(screen, (50, 150, 50) if is_installed else BUTTON_COLOR, dl_mod_btn, border_radius=5)
+                    draw_text("ADDED" if is_installed else "ADD MOD", FONT_SMALL, WHITE, dl_mod_btn.centerx, dl_mod_btn.centery, screen)
+
+        elif current_url == "http://galactic.net/mods/create":
+            draw_text("MOD CREATOR WORKSHOP", FONT_LARGE, (100, 255, 100), bx + browser_w//2, by + 100, screen)
+            draw_text("Create a new mod and publish it to the community!", FONT_SMALL, LIGHT_GRAY, bx + browser_w//2, by + 140, screen)
+            
+            name_rect = pygame.Rect(bx + 200, by + 200, 400, 40)
+            pygame.draw.rect(screen, (255, 255, 200) if active_input == "NAME" else WHITE, name_rect, border_radius=5)
+            draw_text("Mod Name:", FONT_MEDIUM, WHITE, bx + 100, by + 220, screen)
+            draw_text(mod_name_input + ("|" if (pygame.time.get_ticks()//500)%2==0 and active_input == "NAME" else ""), FONT_MEDIUM, BLACK, name_rect.left + 10, name_rect.centery, screen, align="left")
+            
+            desc_rect = pygame.Rect(bx + 200, by + 300, 400, 40)
+            pygame.draw.rect(screen, (255, 255, 200) if active_input == "DESC" else WHITE, desc_rect, border_radius=5)
+            draw_text("Description:", FONT_MEDIUM, WHITE, bx + 100, by + 320, screen)
+            draw_text(mod_desc_input + ("|" if (pygame.time.get_ticks()//500)%2==0 and active_input == "DESC" else ""), FONT_MEDIUM, BLACK, desc_rect.left + 10, desc_rect.centery, screen, align="left")
+            
+            publish_rect = pygame.Rect(bx + 300, by + 400, 300, 50)
+            can_publish = bool(mod_name_input.strip() and mod_desc_input.strip())
+            pygame.draw.rect(screen, (50, 150, 250) if can_publish else (100, 100, 100), publish_rect, border_radius=10)
+            draw_text("PUBLISH TO CLOUD", FONT_MEDIUM, WHITE, publish_rect.centerx, publish_rect.centery, screen)
+
+        elif matrix_mode:
+            # Overwrite the page area with black
+            pygame.draw.rect(screen, (0, 0, 0), (bx, by + 40, browser_w, browser_h - 40), border_bottom_left_radius=8, border_bottom_right_radius=8)
+            font_mat = pygame.font.Font(None, 24)
+            for m in matrix_chars:
+                m["y"] += m["speed"]
+                if m["y"] > browser_h:
+                    m["y"] = random.randint(-100, 0)
+                    m["x"] = random.randint(0, browser_w)
+                
+                # Draw the character
+                if m["y"] > 40:
+                    char_surf = font_mat.render(chr(random.randint(33, 126)), True, (0, 255, 0))
+                    screen.blit(char_surf, (bx + m["x"], by + m["y"]))
+            
+            draw_text("WAKE UP, CAPTAIN...", FONT_LARGE, (200, 255, 200), bx + browser_w//2, by + browser_h//2, screen)
+
+        else:
+            draw_text("404: PAGE NOT FOUND", FONT_LARGE, RED, bx + browser_w//2, by + 300, screen)
+            draw_text(f"The requested URL ({current_url}) was not found on this server.", FONT_SMALL, LIGHT_GRAY, bx + browser_w//2, by + 350, screen)
 
         megahack.draw(screen)
         pygame.display.flip()
@@ -948,12 +1315,16 @@ def show_audio_settings_screen(screen, clock):
     test_sfx = [
         ("Laser", "laser"),
         ("Heavy Blast", "heavy_laser"),
+        ("Enemy Laser", "enemy_laser"),
         ("Explosion", "explosion_medium"),
         ("Boss Boom", "explosion_boss"),
         ("Powerup", "powerup_collect"),
         ("Shield Hit", "shield_hit"),
         ("Level Up", "level_up"),
-        ("Alarm", "alarm_boss")
+        ("Alarm", "alarm_boss"),
+        ("Warp Speed", "warp_speed"),
+        ("Virus Laser", "virus_laser"),
+        ("Coin Drop", "coin_pickup")
     ]
     
     test_music = [
@@ -969,35 +1340,40 @@ def show_audio_settings_screen(screen, clock):
         
         # Build UI rects
         center_x = SCREEN_WIDTH // 2
-        y_cursor = 140
+        y_cursor = 130
         
         vol_rects = {}
         for idx, vkey in enumerate(vol_types):
-            minus_rect = pygame.Rect(center_x - 190, y_cursor, 40, 36)
-            bar_rect = pygame.Rect(center_x - 140, y_cursor, 280, 36)
-            plus_rect = pygame.Rect(center_x + 150, y_cursor, 40, 36)
+            minus_rect = pygame.Rect(center_x - 190, y_cursor, 40, 34)
+            bar_rect = pygame.Rect(center_x - 140, y_cursor, 280, 34)
+            plus_rect = pygame.Rect(center_x + 150, y_cursor, 40, 34)
             vol_rects[vkey] = (minus_rect, bar_rect, plus_rect)
-            y_cursor += 55
+            y_cursor += 48
             
         # Mute toggle rects
-        sfx_mute_rect = pygame.Rect(center_x - 180, y_cursor + 10, 170, 40)
-        music_mute_rect = pygame.Rect(center_x + 10, y_cursor + 10, 170, 40)
-        y_cursor += 75
+        sfx_mute_rect = pygame.Rect(center_x - 270, y_cursor + 6, 170, 36)
+        music_mute_rect = pygame.Rect(center_x - 85, y_cursor + 6, 170, 36)
+        copilot_toggle_rect = pygame.Rect(center_x + 100, y_cursor + 6, 170, 36)
+        y_cursor += 50
+        
+        # Sound Pack Selector Rect
+        sound_pack_rect = pygame.Rect(center_x - 200, y_cursor + 4, 400, 38)
+        y_cursor += 58
         
         # SFX test rects
         sfx_btn_rects = []
         for i, (label, sound_id) in enumerate(test_sfx):
             col = i % 4
             row = i // 4
-            r = pygame.Rect(center_x - 260 + (col * 135), y_cursor + (row * 42), 125, 34)
+            r = pygame.Rect(center_x - 260 + (col * 135), y_cursor + (row * 38), 125, 32)
             sfx_btn_rects.append((r, label, sound_id))
             
-        y_cursor += 105
+        y_cursor += 130
         
         # Music test rects
         music_btn_rects = []
         for i, (label, track_id) in enumerate(test_music):
-            r = pygame.Rect(center_x - 325 + (i * 132), y_cursor, 125, 34)
+            r = pygame.Rect(center_x - 325 + (i * 132), y_cursor, 125, 32)
             music_btn_rects.append((r, label, track_id))
 
         for event in pygame.event.get():
@@ -1033,6 +1409,16 @@ def show_audio_settings_screen(screen, clock):
                     state.save_audio_config()
                     sound_manager.play_sfx("hack_toggle")
                     
+                if copilot_toggle_rect.collidepoint(mouse_pos):
+                    state.audio_settings["enable_copilot"] = not state.audio_settings.get("enable_copilot", False)
+                    state.save_audio_config()
+                    sound_manager.play_sfx("hack_toggle")
+                    
+                if sound_pack_rect.collidepoint(mouse_pos):
+                    cur_p = state.audio_settings.get("sound_pack", "classic")
+                    new_p = "cyber" if cur_p == "classic" else "classic"
+                    sound_manager.set_sound_pack(new_p)
+                    
                 # Check SFX test buttons
                 for r, label, sound_id in sfx_btn_rects:
                     if r.collidepoint(mouse_pos):
@@ -1058,22 +1444,19 @@ def show_audio_settings_screen(screen, clock):
         draw_stars(screen)
         
         # Header
-        draw_text("🔊 AUDIO & MUSIC CONTROLS", FONT_LARGE, CYAN, center_x, 60, screen)
-        draw_text("Customize sound levels, test stereo sound effects, and switch music tracks.", FONT_SMALL, LIGHT_GRAY, center_x, 100, screen)
+        draw_text("⚙️ GAME & AUDIO SETTINGS", FONT_LARGE, CYAN, center_x, 50, screen)
+        draw_text("Customize audio volumes, choose sound sets, and test sound effects.", FONT_SMALL, LIGHT_GRAY, center_x, 88, screen)
         
         # Draw Volume Sliders
         for idx, vkey in enumerate(vol_types):
             minus_r, bar_r, plus_r = vol_rects[vkey]
             cur_val = state.audio_settings.get(vkey, 1.0)
             
-            # Label (using align='right' correctly!)
             draw_text(labels[idx], FONT_MEDIUM, WHITE, minus_r.left - 20, minus_r.centery, screen, align="right")
             
-            # Minus button
             pygame.draw.rect(screen, BUTTON_HOVER_COLOR if minus_r.collidepoint(mouse_pos) else BUTTON_COLOR, minus_r, border_radius=6)
             draw_text("-", FONT_MEDIUM, WHITE, minus_r.centerx, minus_r.centery, screen)
             
-            # Bar background & Fill
             pygame.draw.rect(screen, DARK_GRAY, bar_r, border_radius=6)
             fill_w = int(bar_r.width * cur_val)
             if fill_w > 0:
@@ -1081,7 +1464,6 @@ def show_audio_settings_screen(screen, clock):
                 pygame.draw.rect(screen, bar_color, (bar_r.x, bar_r.y, fill_w, bar_r.height), border_radius=6)
             draw_text(f"{int(cur_val * 100)}%", FONT_SMALL, WHITE, bar_r.centerx, bar_r.centery, screen)
             
-            # Plus button
             pygame.draw.rect(screen, BUTTON_HOVER_COLOR if plus_r.collidepoint(mouse_pos) else BUTTON_COLOR, plus_r, border_radius=6)
             draw_text("+", FONT_MEDIUM, WHITE, plus_r.centerx, plus_r.centery, screen)
             
@@ -1096,15 +1478,29 @@ def show_audio_settings_screen(screen, clock):
         pygame.draw.rect(screen, mus_color, music_mute_rect, border_radius=8)
         draw_text(f"Music: {'MUTED' if mus_muted else 'ENABLED'}", FONT_SMALL, WHITE, music_mute_rect.centerx, music_mute_rect.centery, screen)
         
+        copilot_enabled = state.audio_settings.get("enable_copilot", False)
+        copilot_color = MOD_ON_COLOR if copilot_enabled else MOD_OFF_COLOR
+        pygame.draw.rect(screen, copilot_color, copilot_toggle_rect, border_radius=8)
+        draw_text(f"Copilot: {'ON' if copilot_enabled else 'OFF'}", FONT_SMALL, WHITE, copilot_toggle_rect.centerx, copilot_toggle_rect.centery, screen)
+        
+        # Draw Sound Pack Selector Button
+        cur_pack = state.audio_settings.get("sound_pack", "classic").title()
+        pack_btn_color = (0, 130, 200) if cur_pack.lower() == "cyber" else (180, 100, 20)
+        if sound_pack_rect.collidepoint(mouse_pos):
+            pack_btn_color = (0, 170, 255) if cur_pack.lower() == "cyber" else (220, 130, 30)
+        pygame.draw.rect(screen, pack_btn_color, sound_pack_rect, border_radius=8)
+        pygame.draw.rect(screen, (200, 230, 255) if sound_pack_rect.collidepoint(mouse_pos) else (80, 100, 140), sound_pack_rect, 2, border_radius=8)
+        draw_text(f"🔊 SOUND SET: [{cur_pack.upper()} ACTIVE]  (Click to Switch)", FONT_SMALL, WHITE, sound_pack_rect.centerx, sound_pack_rect.centery, screen)
+        
         # Draw SFX Test Section
-        draw_text("─── Test Sound Effects ───", FONT_SMALL, YELLOW, center_x, sfx_btn_rects[0][0].top - 18, screen)
+        draw_text("─── Test Sound Effects ───", FONT_SMALL, YELLOW, center_x, sfx_btn_rects[0][0].top - 16, screen)
         for r, label, _ in sfx_btn_rects:
             c = BUTTON_HOVER_COLOR if r.collidepoint(mouse_pos) else (50, 60, 90)
             pygame.draw.rect(screen, c, r, border_radius=6)
             draw_text(label, FONT_SMALL, WHITE, r.centerx, r.centery, screen)
             
         # Draw Music Test Section
-        draw_text("─── Switch Music Soundtrack ───", FONT_SMALL, MAGENTA, center_x, music_btn_rects[0][0].top - 18, screen)
+        draw_text("─── Switch Music Soundtrack ───", FONT_SMALL, MAGENTA, center_x, music_btn_rects[0][0].top - 16, screen)
         for r, label, track_id in music_btn_rects:
             is_active = (sound_manager.SoundManager.get_instance().current_music_track == track_id)
             c = (140, 40, 100) if is_active else (BUTTON_HOVER_COLOR if r.collidepoint(mouse_pos) else (60, 40, 70))
@@ -1297,6 +1693,7 @@ def show_engine_room(screen, clock):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "QUIT_PROGRAM"
+            if megahack.handle_event(event): continue
             if event.type == pygame.MOUSEBUTTONDOWN:
                 for p in panels:
                     if p["rect"].collidepoint(event.pos) and p["status"] == "BROKEN":
@@ -1351,6 +1748,7 @@ def show_control_room(screen, clock):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return "QUIT_PROGRAM"
+            if megahack.handle_event(event): continue
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if start_btn.collidepoint(event.pos):
                     sound_manager.play_sfx("ui_click")

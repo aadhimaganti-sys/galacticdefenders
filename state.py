@@ -66,13 +66,15 @@ DEFAULT_PLAYER_DATA = {
     "has_downloaded_cheat_menu": False,
 }
 
-# --- Audio Settings ---
+# --- General & Audio Settings ---
 audio_settings = {
     "master_volume": 1.0,
     "sfx_volume": 0.8,
     "music_volume": 0.7,
     "sfx_muted": False,
     "music_muted": False,
+    "enable_copilot": False,
+    "sound_pack": "classic",
 }
 
 def load_audio_config():
@@ -131,22 +133,39 @@ def reload_mods():
         
     try:
         for filename in os.listdir(mods_dir):
-            if filename.endswith(".json"):
+            if filename.endswith(".json") and (not active_mods or filename in active_mods):
                 try:
                     with open(os.path.join(mods_dir, filename), "r") as f:
                         ext = json.load(f)
                         if "ships" in ext:
                             for k, d in ext["ships"].items():
+                                d["name"] = d.get("name", k.replace("_", " ").title())
+                                d["desc"] = d.get("desc", "Custom Datapack Starship")
+                                d["cost"] = d.get("cost", 0)
+                                d["speed"] = d.get("speed", d.get("base_speed", 7))
                                 d["color"] = tuple(d.get("color", (255, 255, 255)))
                                 d["wing_color"] = tuple(d.get("wing_color", (150, 150, 150)))
                                 d["from_datapack"] = True
                                 SHIP_TYPES[k] = d
+                                if d.get("unlocked_by_default", False) or d.get("cost", 0) == 0:
+                                    for p in ["P1", "P2"]:
+                                        if p in all_player_data and k not in all_player_data[p].get("owned_ships", []):
+                                            all_player_data[p].setdefault("owned_ships", ["default_jet"]).append(k)
                         if "helpers" in ext:
                             for k, d in ext["helpers"].items():
+                                d["name"] = d.get("name", k.replace("_", " ").title())
+                                d["desc"] = d.get("desc", "Custom Datapack Helper Unit")
+                                d["cost"] = d.get("cost", 0)
                                 d["from_datapack"] = True
                                 HELPER_TYPES[k] = d
+                                if d.get("unlocked_by_default", False) or d.get("cost", 0) == 0:
+                                    for p in ["P1", "P2"]:
+                                        if p in all_player_data and k not in all_player_data[p].get("unlocked_powers", []):
+                                            all_player_data[p].setdefault("unlocked_powers", ["power_autoshield"]).append(k)
                         if "powerups" in ext:
                             for k, d in ext["powerups"].items():
+                                d["name"] = d.get("name", k.replace("_", " ").title())
+                                d["desc"] = d.get("desc", "Custom Datapack Powerup")
                                 d["color"] = tuple(d.get("color", (0, 255, 255)))
                                 POWERUP_TYPES[k] = d
                 except Exception as e: 

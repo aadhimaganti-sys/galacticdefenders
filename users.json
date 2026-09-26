@@ -5,12 +5,26 @@
     "admin": {
       "admin": true,
       "password": "pw",
-      "player_data": {}
-    },
-    "helloworld": {
-      "admin": false,
-      "password": "helloworld",
-      "player_data": {}
+      "player_data": {
+        "coins": 0,
+        "credits": 0,
+        "has_downloaded_cheat_menu": false,
+        "has_subscription": false,
+        "owned_ships": [
+          "default_jet",
+          "obliterator"
+        ],
+        "selected_ship": "default_jet",
+        "unlocked_powers": [
+          "power_autoshield",
+          "attack_drone_mk2",
+          "power_modloader"
+        ],
+        "upgrades": {
+          "blaster_level": 1,
+          "max_health": 1
+        }
+      }
     }
   }
 }

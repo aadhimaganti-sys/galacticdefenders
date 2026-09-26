@@ -15,7 +15,54 @@ import megahack
 import sound_manager
 
 pygame.init()
-SCREEN = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
+import moderngl
+import array
+
+pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN | pygame.OPENGL | pygame.DOUBLEBUF)
+
+MGL_CTX = moderngl.create_context(require=310)
+MGL_PROG = MGL_CTX.program(
+    vertex_shader='''
+#version 140
+in vec2 in_vert;
+in vec2 in_texcoord;
+out vec2 v_text;
+void main() {
+    gl_Position = vec4(in_vert, 0.0, 1.0);
+    v_text = in_texcoord;
+}
+''',
+    fragment_shader='''
+#version 140
+uniform sampler2D Texture;
+in vec2 v_text;
+out vec4 color;
+void main() {
+    color = texture(Texture, v_text);
+}
+'''
+)
+
+MGL_VBO = MGL_CTX.buffer(array.array('f', [
+    # x, y, u, v
+    -1.0,  1.0, 0.0, 0.0,
+     1.0,  1.0, 1.0, 0.0,
+    -1.0, -1.0, 0.0, 1.0,
+     1.0, -1.0, 1.0, 1.0,
+]))
+MGL_VAO = MGL_CTX.simple_vertex_array(MGL_PROG, MGL_VBO, 'in_vert', 'in_texcoord')
+MGL_TEXTURE = MGL_CTX.texture((SCREEN_WIDTH, SCREEN_HEIGHT), 4)
+MGL_TEXTURE.filter = (moderngl.NEAREST, moderngl.NEAREST)
+
+SCREEN = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+_original_flip = pygame.display.flip
+def _moderngl_flip():
+    MGL_TEXTURE.write(pygame.image.tobytes(SCREEN, 'RGBA', False))
+    MGL_TEXTURE.use(0)
+    MGL_VAO.render(moderngl.TRIANGLE_STRIP)
+    _original_flip()
+pygame.display.flip = _moderngl_flip
 # --- 2.2 VIRTUAL CAMERA CANVAS ---
 VIRTUAL_SURFACE = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Galactic Defender - 2.2 Cinematic Engine")
@@ -49,6 +96,12 @@ def spinoff_game_loop():
     level_progress = 0
     the_boss = None
 
+    copilot_chatter = ""
+    copilot_chatter_timer = 0
+    copilot_box_x, copilot_box_y = 0, 0
+    is_typing_reply = False
+    player_reply = ""
+
     running = True
     while running:
         if c_level >= len(levels): 
@@ -65,6 +118,28 @@ def spinoff_game_loop():
                 state.ACTIVE_HACKS["Auto Pilot"] = not state.ACTIVE_HACKS.get("Auto Pilot", False)
                 
             if event.type == pygame.KEYDOWN:
+                if state.audio_settings.get("enable_copilot", False):
+                    if is_typing_reply:
+                        if event.key == pygame.K_RETURN:
+                            if player_reply.strip():
+                                copilot_chatter = f"Captain: {player_reply}"
+                                copilot_chatter_timer = 180
+                                sound_manager.play_sfx("ui_click", 0.5)
+                            is_typing_reply = False
+                            player_reply = ""
+                        elif event.key == pygame.K_ESCAPE:
+                            is_typing_reply = False
+                            player_reply = ""
+                        elif event.key == pygame.K_BACKSPACE:
+                            player_reply = player_reply[:-1]
+                        elif event.unicode.isprintable():
+                            player_reply += event.unicode
+                        continue
+                    elif event.key == pygame.K_t and copilot_chatter_timer > 0:
+                        is_typing_reply = True
+                        player_reply = ""
+                        continue
+
                 if event.key == pygame.K_ESCAPE: 
                     return "HOME"
                 if event.key == pygame.K_p: 
@@ -221,6 +296,33 @@ def spinoff_game_loop():
                 level_timer = 0
         elif story_state == "GAME_OVER":
             ui.draw_text("SYSTEM FAILURE", FONT_XLARGE, LOSE_RED, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, VIRTUAL_SURFACE)
+            
+        if story_state == "PLAYING" and state.audio_settings.get("enable_copilot", False):
+            if copilot_chatter_timer > 0:
+                copilot_chatter_timer -= 1
+                box_h = 80 if is_typing_reply else 50
+                box_rect = pygame.Rect(copilot_box_x, copilot_box_y, 700, box_h)
+                pygame.draw.rect(VIRTUAL_SURFACE, (15, 25, 45), box_rect, border_radius=10)
+                pygame.draw.rect(VIRTUAL_SURFACE, CYAN, box_rect, 2, border_radius=10)
+                ui.draw_text(copilot_chatter, FONT_SMALL, WHITE, box_rect.centerx, box_rect.top + 25, VIRTUAL_SURFACE)
+                if is_typing_reply:
+                    ui.draw_text("Reply: " + player_reply + ("|" if (pygame.time.get_ticks()//500)%2==0 else ""), FONT_SMALL, YELLOW, box_rect.centerx, box_rect.top + 55, VIRTUAL_SURFACE)
+                else:
+                    ui.draw_text("Press 'T' to reply", FONT_SMALL, LIGHT_GRAY, box_rect.right - 80, box_rect.bottom - 15, VIRTUAL_SURFACE)
+            elif random.randint(1, 500) == 1:
+                copilot_chatter = random.choice([
+                    "Copilot 1: Captain, I'm detecting anomalies!",
+                    "Copilot 2: We must survive this, Captain!",
+                    "Copilot 1: Engines are stable. Ready for your command, Captain.",
+                    "Copilot 2: Focus, Captain! The mission depends on us!",
+                    "Copilot 1: That was a close one! Excellent flying, Captain.",
+                    "Copilot 2: Scanning the rift... something's not right, Captain.",
+                    "Copilot 1: Thrusters at maximum capacity. Hold on, Captain!",
+                ])
+                copilot_chatter_timer = 240
+                copilot_box_x = random.randint(20, max(30, SCREEN_WIDTH - 720))
+                copilot_box_y = random.randint(20, max(30, SCREEN_HEIGHT - 120))
+                sound_manager.play_sfx("dialogue_beep", 0.4)
 
         # --- 2.2 CAMERA RENDER PIPELINE ---
         if state.ACTIVE_HACKS.get("Force Screen Shake", False):
@@ -293,6 +395,11 @@ def ultimate_boss_loop():
 
     running = True
     b_state = "PLAYING"
+    copilot_chatter = ""
+    copilot_chatter_timer = 0
+    copilot_box_x, copilot_box_y = 0, 0
+    is_typing_reply = False
+    player_reply = ""
     
     while running:
         for event in pygame.event.get():
@@ -305,6 +412,28 @@ def ultimate_boss_loop():
                 state.ACTIVE_HACKS["Auto Pilot"] = not state.ACTIVE_HACKS.get("Auto Pilot", False)
                 
             if event.type == pygame.KEYDOWN:
+                if state.audio_settings.get("enable_copilot", False):
+                    if is_typing_reply:
+                        if event.key == pygame.K_RETURN:
+                            if player_reply.strip():
+                                copilot_chatter = f"Captain: {player_reply}"
+                                copilot_chatter_timer = 180
+                                sound_manager.play_sfx("ui_click", 0.5)
+                            is_typing_reply = False
+                            player_reply = ""
+                        elif event.key == pygame.K_ESCAPE:
+                            is_typing_reply = False
+                            player_reply = ""
+                        elif event.key == pygame.K_BACKSPACE:
+                            player_reply = player_reply[:-1]
+                        elif event.unicode.isprintable():
+                            player_reply += event.unicode
+                        continue
+                    elif event.key == pygame.K_t and copilot_chatter_timer > 0:
+                        is_typing_reply = True
+                        player_reply = ""
+                        continue
+
                 if event.key == pygame.K_ESCAPE: 
                     return "HOME"
                 if event.key == pygame.K_p: 
@@ -426,6 +555,33 @@ def ultimate_boss_loop():
             ui.draw_text("OMEGA DEFEATED. YOU ARE A TRUE PILOT.", FONT_LARGE, WIN_GREEN, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, VIRTUAL_SURFACE)
         elif b_state == "GAME_OVER": 
             ui.draw_text("SYSTEM FAILURE", FONT_LARGE, LOSE_RED, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2, VIRTUAL_SURFACE)
+
+        if state.audio_settings.get("enable_copilot", False):
+            if copilot_chatter_timer > 0:
+                copilot_chatter_timer -= 1
+                box_h = 80 if is_typing_reply else 50
+                box_rect = pygame.Rect(copilot_box_x, copilot_box_y, 700, box_h)
+                pygame.draw.rect(VIRTUAL_SURFACE, (15, 25, 45), box_rect, border_radius=10)
+                pygame.draw.rect(VIRTUAL_SURFACE, CYAN, box_rect, 2, border_radius=10)
+                ui.draw_text(copilot_chatter, FONT_SMALL, WHITE, box_rect.centerx, box_rect.top + 25, VIRTUAL_SURFACE)
+                if is_typing_reply:
+                    ui.draw_text("Reply: " + player_reply + ("|" if (pygame.time.get_ticks()//500)%2==0 else ""), FONT_SMALL, YELLOW, box_rect.centerx, box_rect.top + 55, VIRTUAL_SURFACE)
+                else:
+                    ui.draw_text("Press 'T' to reply", FONT_SMALL, LIGHT_GRAY, box_rect.right - 80, box_rect.bottom - 15, VIRTUAL_SURFACE)
+            elif random.randint(1, 500) == 1:
+                copilot_chatter = random.choice([
+                    "Copilot 1: Captain, watch your six! The boss is preparing an attack!",
+                    "Copilot 2: We need more firepower, Captain! Focus fire on the core!",
+                    "Copilot 1: Engines are stable. Evasive maneuvers ready, Captain.",
+                    "Copilot 2: Shields taking heavy damage! Be careful, Captain!",
+                    "Copilot 1: That was a close one! Excellent flying, Captain.",
+                    "Copilot 2: Scanning boss weaknesses... keep hitting it, Captain!",
+                    "Copilot 1: Thrusters at maximum capacity. We can't take much more!",
+                ])
+                copilot_chatter_timer = 240
+                copilot_box_x = random.randint(20, max(30, SCREEN_WIDTH - 720))
+                copilot_box_y = random.randint(20, max(30, SCREEN_HEIGHT - 120))
+                sound_manager.play_sfx("dialogue_beep", 0.4)
 
         # --- 2.2 CAMERA RENDER PIPELINE ---
         if state.ACTIVE_HACKS.get("Force Screen Shake", False):
@@ -618,6 +774,11 @@ def game_loop(current_mode):
     connected_clients = {}
     next_client_id = 2 if "HOST" in current_mode else 1
     running = True
+    copilot_chatter = ""
+    copilot_chatter_timer = 0
+    copilot_box_x, copilot_box_y = 0, 0
+    is_typing_reply = False
+    player_reply = ""
 
     while running:
         if current_mode.startswith("LAN_HOST") or current_mode == "HOST_CLOUD":
@@ -654,6 +815,28 @@ def game_loop(current_mode):
                 state.ACTIVE_HACKS["Auto Pilot"] = not state.ACTIVE_HACKS.get("Auto Pilot", False)
                 
             if event.type == pygame.KEYDOWN:
+                if state.audio_settings.get("enable_copilot", False):
+                    if is_typing_reply:
+                        if event.key == pygame.K_RETURN:
+                            if player_reply.strip():
+                                copilot_chatter = f"Captain: {player_reply}"
+                                copilot_chatter_timer = 180
+                                sound_manager.play_sfx("ui_click", 0.5)
+                            is_typing_reply = False
+                            player_reply = ""
+                        elif event.key == pygame.K_ESCAPE:
+                            is_typing_reply = False
+                            player_reply = ""
+                        elif event.key == pygame.K_BACKSPACE:
+                            player_reply = player_reply[:-1]
+                        elif event.unicode.isprintable():
+                            player_reply += event.unicode
+                        continue
+                    elif event.key == pygame.K_t and copilot_chatter_timer > 0:
+                        is_typing_reply = True
+                        player_reply = ""
+                        continue
+
                 if event.key == pygame.K_p: 
                     state.ACTIVE_HACKS["Auto Pilot"] = not state.ACTIVE_HACKS.get("Auto Pilot", False)
                 if event.key == pygame.K_SPACE and not state.CHEAT_MENU_VISIBLE: 
@@ -753,7 +936,10 @@ def game_loop(current_mode):
                         p_data = state.POWERUP_TYPES[pu.power_type]
                         sound_manager.play_sfx("powerup_collect", 0.85)
                         if "heal_amount" in p_data:
-                            p.health = min(p.max_health, p.health + p_data["heal_amount"])
+                            if hasattr(p, 'health') and hasattr(p, 'max_health'):
+                                p.health = min(p.max_health, p.health + p_data["heal_amount"])
+                            else:
+                                p.activate_shield()
                         if "speed_multiplier" in p_data:
                             p.base_speed = p.base_speed * p_data["speed_multiplier"]
                         if "fire_rate_multiplier" in p_data:
@@ -852,6 +1038,33 @@ def game_loop(current_mode):
             ui.draw_text(f"P1 Score: {players[1].score}", FONT_MEDIUM, PLAYER_COLORS[0], 25, 22, VIRTUAL_SURFACE, align="left")
         if 2 in players:
             ui.draw_text(f"P2 Score: {players[2].score}", FONT_MEDIUM, PLAYER_COLORS[1], SCREEN_WIDTH - 25, 22, VIRTUAL_SURFACE, align="right")
+            
+        if state.audio_settings.get("enable_copilot", False):
+            if copilot_chatter_timer > 0:
+                copilot_chatter_timer -= 1
+                box_h = 80 if is_typing_reply else 50
+                box_rect = pygame.Rect(copilot_box_x, copilot_box_y, 700, box_h)
+                pygame.draw.rect(VIRTUAL_SURFACE, (15, 25, 45), box_rect, border_radius=10)
+                pygame.draw.rect(VIRTUAL_SURFACE, CYAN, box_rect, 2, border_radius=10)
+                ui.draw_text(copilot_chatter, FONT_SMALL, WHITE, box_rect.centerx, box_rect.top + 25, VIRTUAL_SURFACE)
+                if is_typing_reply:
+                    ui.draw_text("Reply: " + player_reply + ("|" if (pygame.time.get_ticks()//500)%2==0 else ""), FONT_SMALL, YELLOW, box_rect.centerx, box_rect.top + 55, VIRTUAL_SURFACE)
+                else:
+                    ui.draw_text("Press 'T' to reply", FONT_SMALL, LIGHT_GRAY, box_rect.right - 80, box_rect.bottom - 15, VIRTUAL_SURFACE)
+            elif random.randint(1, 500) == 1:
+                copilot_chatter = random.choice([
+                    "Copilot 1: Captain, watch your six! Asteroids incoming!",
+                    "Copilot 2: We need more firepower, Captain!",
+                    "Copilot 1: Engines are stable. Ready for your command, Captain.",
+                    "Copilot 2: Shields holding... barely! Be careful, Captain!",
+                    "Copilot 1: That was a close one! Excellent flying, Captain.",
+                    "Copilot 2: Scanning for hostile signatures, Captain.",
+                    "Copilot 1: Thrusters at maximum capacity. We can't take much more!",
+                ])
+                copilot_chatter_timer = 240
+                copilot_box_x = random.randint(20, max(30, SCREEN_WIDTH - 720))
+                copilot_box_y = random.randint(20, max(30, SCREEN_HEIGHT - 120))
+                sound_manager.play_sfx("dialogue_beep", 0.4)
         
         # --- 2.2 CAMERA RENDER PIPELINE ---
         if state.ACTIVE_HACKS.get("Force Screen Shake", False):

@@ -53,22 +53,38 @@ class SoundManager:
             "shield_hit", "shield_down",
             "level_up", "alarm_boss",
             "ui_click", "ui_hover", "dialogue_beep", "hack_toggle",
-            "game_over", "victory"
+            "game_over", "victory",
+            "warp_speed", "virus_laser", "plasma_cannon", "coin_pickup", "glitch_burst"
         ]
 
+        pack = state.audio_settings.get("sound_pack", "classic")
+        cyber_dir = os.path.join(SOUNDS_DIR, "cyber")
+
         for name in sfx_names:
-            wav_path = os.path.join(SOUNDS_DIR, f"{name}.wav")
+            wav_path = None
+            if pack == "cyber" and os.path.exists(cyber_dir):
+                cand = os.path.join(cyber_dir, f"{name}.wav")
+                if os.path.exists(cand):
+                    wav_path = cand
+            if not wav_path or not os.path.exists(wav_path):
+                wav_path = os.path.join(SOUNDS_DIR, f"{name}.wav")
+
             if os.path.exists(wav_path):
                 try:
                     snd = pygame.mixer.Sound(wav_path)
                     self.sounds[name] = snd
                 except Exception as e:
                     print(f"[SoundManager] Failed to load sound {name}: {e}")
-            else:
-                # Try generating missing single asset
-                pass
 
         self.update_volumes()
+
+    def set_sound_pack(self, pack_name):
+        """Switches active sound pack ('classic' or 'cyber') and reloads."""
+        state.audio_settings["sound_pack"] = pack_name
+        state.save_audio_config()
+        self.load_all_sounds()
+        self.play_sound("ui_click")
+        self.play_sound("laser", 0.7)
 
     def update_volumes(self):
         """Updates SFX and Music volume based on global state settings."""
@@ -182,3 +198,6 @@ def stop_music(fade_ms=300):
 
 def update_audio_volumes():
     SoundManager.get_instance().update_volumes()
+
+def set_sound_pack(pack_name):
+    SoundManager.get_instance().set_sound_pack(pack_name)
