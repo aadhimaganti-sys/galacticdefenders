@@ -2,6 +2,8 @@ import pygame
 import json
 import os
 import random
+import urllib.request
+import urllib.parse
 from settings import *
 import state
 from sprites import Player, Asteroid, Boss, SpinoffDrone, Explosion, PowerUp
@@ -194,6 +196,86 @@ def playtest_level(screen, grid_data, grid_w, grid_h, cell_size):
     state.CHEAT_MENU_VISIBLE = temp_cheat
     sound_manager.play_music("menu_theme")
 
+def browse_web_levels(screen):
+    clock = pygame.time.Clock()
+    search_query = ""
+    results = []
+    status_msg = "Type to search and press ENTER"
+    
+    def fetch_search(q):
+        try:
+            url = f"{CLOUD_LEVEL_SERVER}/search?q={urllib.parse.quote(q)}"
+            with urllib.request.urlopen(url, timeout=3) as resp:
+                return json.loads(resp.read().decode())
+        except Exception:
+            return None
+
+    results = fetch_search("") or []
+    
+    back_btn = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT - 60, 200, 50)
+    scroll_offset = 0
+
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return None
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return None
+                elif event.key == pygame.K_RETURN:
+                    res = fetch_search(search_query)
+                    if res is not None:
+                        results = res
+                        status_msg = f"Found {len(results)} levels"
+                    else:
+                        status_msg = "Search failed (Server Offline?)"
+                    scroll_offset = 0
+                elif event.key == pygame.K_BACKSPACE:
+                    search_query = search_query[:-1]
+                elif event.unicode.isprintable():
+                    search_query += event.unicode
+                    
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    if back_btn.collidepoint(mouse_pos):
+                        return None
+                    
+                    for i, r in enumerate(results):
+                        item_rect = pygame.Rect(SCREEN_WIDTH // 2 - 300, 150 + i * 60 + scroll_offset, 600, 50)
+                        if item_rect.collidepoint(mouse_pos):
+                            try:
+                                url = f"{CLOUD_LEVEL_SERVER}/download/{r['id']}"
+                                with urllib.request.urlopen(url, timeout=3) as resp:
+                                    data = json.loads(resp.read().decode())
+                                    return data.get("custom_waves")
+                            except Exception:
+                                status_msg = "Failed to download!"
+                elif event.button == 4:
+                    scroll_offset = min(scroll_offset + 40, 0)
+                elif event.button == 5:
+                    scroll_offset -= 40
+
+        screen.fill(BLACK)
+        ui.draw_stars(screen)
+        ui.draw_text("WEB LEVEL BROWSER", FONT_LARGE, CYAN, SCREEN_WIDTH // 2, 50, screen, drop_shadow=True)
+        ui.draw_text(f"Search: {search_query}_", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, 100, screen)
+        ui.draw_text(status_msg, FONT_SMALL, LIGHT_GRAY, SCREEN_WIDTH // 2, 130, screen)
+        
+        for i, r in enumerate(results):
+            y_pos = 150 + i * 60 + scroll_offset
+            if y_pos > 100 and y_pos < SCREEN_HEIGHT - 80:
+                item_rect = pygame.Rect(SCREEN_WIDTH // 2 - 300, y_pos, 600, 50)
+                is_hover = item_rect.collidepoint(mouse_pos)
+                pygame.draw.rect(screen, (100, 150, 255) if is_hover else BUTTON_COLOR, item_rect, border_radius=8)
+                ui.draw_text(f"{r['name']} (ID: {r['id']})", FONT_MEDIUM, WHITE, item_rect.centerx, item_rect.centery, screen)
+                
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
+        ui.draw_text("BACK", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
+        
+        pygame.display.flip()
+        clock.tick(FPS)
+
 def run_level_editor(screen):
     clock = pygame.time.Clock()
     pygame.display.set_caption("Galactic Defender - Level Architect Studio")
@@ -220,13 +302,17 @@ def run_level_editor(screen):
     ]
 
     top_panel = pygame.Rect(0, 0, SCREEN_WIDTH, 45)
-    ui_panel = pygame.Rect(0, SCREEN_HEIGHT - 110, SCREEN_WIDTH, 110)
+    ui_panel = pygame.Rect(0, SCREEN_HEIGHT - 150, SCREEN_WIDTH, 150)
     
-    exit_btn = pygame.Rect(15, SCREEN_HEIGHT - 95, 90, 80)
+    exit_btn = pygame.Rect(15, SCREEN_HEIGHT - 135, 90, 120)
+    
     play_btn = pygame.Rect(SCREEN_WIDTH - 360, SCREEN_HEIGHT - 95, 160, 80)
     save_btn = pygame.Rect(SCREEN_WIDTH - 185, SCREEN_HEIGHT - 95, 170, 36)
     load_btn = pygame.Rect(SCREEN_WIDTH - 185, SCREEN_HEIGHT - 52, 80, 36)
     clear_btn = pygame.Rect(SCREEN_WIDTH - 95, SCREEN_HEIGHT - 52, 80, 36)
+    
+    publish_btn = pygame.Rect(SCREEN_WIDTH - 360, SCREEN_HEIGHT - 140, 160, 36)
+    browse_btn = pygame.Rect(SCREEN_WIDTH - 185, SCREEN_HEIGHT - 140, 170, 36)
     
     msg, msg_timer = "", 0
 
@@ -305,6 +391,30 @@ def run_level_editor(screen):
                         msg, msg_timer = "NO SAVE FOUND", pygame.time.get_ticks()
                         sound_manager.play_sfx("game_over", 0.4)
 
+                if publish_btn.collidepoint(mouse_pos):
+                    try:
+                        author = state.current_user if getattr(state, 'current_user', None) else "Anonymous"
+                        level_data = {"custom_waves": grid, "name": f"{author}'s Level"}
+                        req = urllib.request.Request(f"{CLOUD_LEVEL_SERVER}/publish", data=json.dumps(level_data).encode(), headers={'Content-Type': 'application/json'})
+                        with urllib.request.urlopen(req, timeout=3) as response:
+                            res = json.loads(response.read().decode())
+                            msg, msg_timer = f"PUBLISHED! (ID: {res.get('id', '???')})", pygame.time.get_ticks()
+                            sound_manager.play_sfx("hack_toggle")
+                    except Exception as e:
+                        msg, msg_timer = "PUBLISH FAILED (Server offline?)", pygame.time.get_ticks()
+                        sound_manager.play_sfx("game_over", 0.4)
+                        
+                if browse_btn.collidepoint(mouse_pos):
+                    downloaded_grid = browse_web_levels(screen)
+                    if downloaded_grid:
+                        # Copy downloaded grid over the current one
+                        for r in range(min(grid_h, len(downloaded_grid))):
+                            for c in range(min(grid_w, len(downloaded_grid[r]))): 
+                                grid[r][c] = downloaded_grid[r][c]
+                        msg, msg_timer = "LOADED FROM WEB!", pygame.time.get_ticks()
+                        sound_manager.play_sfx("hack_toggle")
+                    pygame.display.set_caption("Galactic Defender - Level Architect Studio")
+
                 if clear_btn.collidepoint(mouse_pos):
                     grid = [[0 for _ in range(grid_w)] for _ in range(grid_h)]
                     msg, msg_timer = "GRID CLEARED!", pygame.time.get_ticks()
@@ -318,7 +428,7 @@ def run_level_editor(screen):
                     camera_y = max(0, min(int(rel_y * max_camera_y), max_camera_y))
 
                 for i, t in enumerate(tools):
-                    tr = pygame.Rect(tool_start_x + (i * (tool_w + tool_gap)), SCREEN_HEIGHT - 90, tool_w, tool_h)
+                    tr = pygame.Rect(tool_start_x + (i * (tool_w + tool_gap)), SCREEN_HEIGHT - 130, tool_w, tool_h)
                     if tr.collidepoint(mouse_pos): 
                         current_tool = t["id"]
                         sound_manager.play_sfx("ui_click")
@@ -389,16 +499,22 @@ def run_level_editor(screen):
         ui.draw_text("▶ TEST", FONT_LARGE, BLACK, play_btn.centerx, play_btn.centery, screen)
         
         pygame.draw.rect(screen, BUTTON_COLOR, save_btn, border_radius=5)
-        ui.draw_text("SAVE LEVEL", FONT_SMALL, WHITE, save_btn.centerx, save_btn.centery, screen)
+        ui.draw_text("SAVE LOCAL", FONT_SMALL, WHITE, save_btn.centerx, save_btn.centery, screen)
         
         pygame.draw.rect(screen, BUTTON_COLOR, load_btn, border_radius=5)
         ui.draw_text("LOAD", FONT_SMALL, WHITE, load_btn.centerx, load_btn.centery, screen)
 
         pygame.draw.rect(screen, (120, 40, 40), clear_btn, border_radius=5)
         ui.draw_text("CLEAR", FONT_SMALL, WHITE, clear_btn.centerx, clear_btn.centery, screen)
+        
+        pygame.draw.rect(screen, (100, 50, 150), publish_btn, border_radius=5)
+        ui.draw_text("☁ PUBLISH", FONT_SMALL, WHITE, publish_btn.centerx, publish_btn.centery, screen)
+        
+        pygame.draw.rect(screen, (0, 100, 150), browse_btn, border_radius=5)
+        ui.draw_text("☁ BROWSE WEB", FONT_SMALL, WHITE, browse_btn.centerx, browse_btn.centery, screen)
 
         for i, t in enumerate(tools):
-            tr = pygame.Rect(tool_start_x + (i * (tool_w + tool_gap)), SCREEN_HEIGHT - 90, tool_w, tool_h)
+            tr = pygame.Rect(tool_start_x + (i * (tool_w + tool_gap)), SCREEN_HEIGHT - 130, tool_w, tool_h)
             is_active = (current_tool == t["id"])
             col = t["color"] if is_active else (t["color"][0]//3, t["color"][1]//3, t["color"][2]//3)
             pygame.draw.rect(screen, col, tr, border_radius=6)

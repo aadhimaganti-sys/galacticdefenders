@@ -1,5 +1,5 @@
 {
-  "last_logged_in": null,
+  "last_logged_in": "admin",
   "primary_admin": "admin",
   "users": {
     "admin": {
@@ -11,13 +11,11 @@
         "has_downloaded_cheat_menu": false,
         "has_subscription": false,
         "owned_ships": [
-          "default_jet",
-          "obliterator"
+          "default_jet"
         ],
         "selected_ship": "default_jet",
         "unlocked_powers": [
           "power_autoshield",
-          "attack_drone_mk2",
           "power_modloader"
         ],
         "upgrades": {
@@ -25,11 +23,6 @@
           "max_health": 1
         }
       }
-    },
-    "hello": {
-      "admin": false,
-      "password": "hello",
-      "player_data": {}
     }
   }
 }

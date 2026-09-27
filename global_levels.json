@@ -1,0 +1,19 @@
+{
+  "levels": [
+    {
+      "id": 1,
+      "name": "Level 1",
+      "description": "The first level of the game."
+    },
+    {
+      "id": 2,
+      "name": "Level 2",
+      "description": "The second level of the game."
+    },
+    {
+      "id": 3,
+      "name": "Level 3",
+      "description": "The third level of the game."
+    }
+  ]
+}

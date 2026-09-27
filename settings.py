@@ -10,6 +10,8 @@ SCREEN_WIDTH = info.current_w
 SCREEN_HEIGHT = info.current_h
 FPS = 60
 
+CLOUD_LEVEL_SERVER = "http://127.0.0.1:5000"
+
 # --- Colors ---
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -65,6 +67,7 @@ ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 SOUNDS_DIR = os.path.join(ASSETS_DIR, "sounds")
 MUSIC_DIR = os.path.join(ASSETS_DIR, "music")
 AUDIO_CONFIG_FILE = os.path.join(BASE_DIR, "audio_config.json")
+ADMIN_CONFIG_FILE = os.path.join(BASE_DIR, "admin_config.json")
 
 # --- Base Catalogs ---
 BASE_SHIP_TYPES = {
@@ -130,6 +133,15 @@ BASE_SHIP_TYPES = {
         "wing_color": (50, 0, 100),
         "desc": "Black market stealth ship. Insanely fast.",
         "start_blasters": 3,
+    },
+    "v2_phantom": {
+        "name": "V2 Phantom (Web Exclusive)",
+        "cost": "FREE",
+        "speed": 15,
+        "color": (0, 255, 255),
+        "wing_color": (0, 100, 255),
+        "desc": "Exclusive ship downloaded from Browser V2.0.",
+        "start_blasters": 5,
     },
 }
 

@@ -66,7 +66,7 @@ DEFAULT_PLAYER_DATA = {
     "has_downloaded_cheat_menu": False,
 }
 
-# --- General & Audio Settings ---
+# --- General & Audio Settings (Player Preferences) ---
 audio_settings = {
     "master_volume": 1.0,
     "sfx_volume": 0.8,
@@ -88,11 +88,50 @@ def load_audio_config():
         pass
 
 def save_audio_config():
+    global audio_settings
     try:
         with open(AUDIO_CONFIG_FILE, "w") as f:
             json.dump(audio_settings, f, indent=4)
     except Exception:
         pass
+
+# --- Privileged Admin Settings ---
+admin_settings = {
+    "dev_console_allowed": True,
+    "default_starting_credits": 0,
+    "global_game_speed": 1.0,
+    "force_god_mode": False,
+}
+
+DEV_CONSOLE_ALLOWED = True
+PLAYER_HEALTH_MODE = False
+
+def load_admin_config():
+    global admin_settings, DEV_CONSOLE_ALLOWED, GAME_SPEED, ADMIN_GOD_MODE, PLAYER_HEALTH_MODE
+    try:
+        if os.path.exists(ADMIN_CONFIG_FILE):
+            with open(ADMIN_CONFIG_FILE, "r") as f:
+                loaded = json.load(f)
+                admin_settings.update(loaded)
+                DEV_CONSOLE_ALLOWED = admin_settings.get("dev_console_allowed", True)
+                GAME_SPEED = admin_settings.get("global_game_speed", 1.0)
+                ADMIN_GOD_MODE = admin_settings.get("force_god_mode", False)
+                PLAYER_HEALTH_MODE = admin_settings.get("player_health_mode", False)
+    except Exception:
+        pass
+
+def save_admin_config():
+    global admin_settings, DEV_CONSOLE_ALLOWED, GAME_SPEED, ADMIN_GOD_MODE, PLAYER_HEALTH_MODE
+    try:
+        admin_settings["dev_console_allowed"] = DEV_CONSOLE_ALLOWED
+        admin_settings["global_game_speed"] = GAME_SPEED
+        admin_settings["force_god_mode"] = ADMIN_GOD_MODE
+        admin_settings["player_health_mode"] = PLAYER_HEALTH_MODE
+        with open(ADMIN_CONFIG_FILE, "w") as f:
+            json.dump(admin_settings, f, indent=4)
+    except Exception:
+        pass
+
 
 all_player_data = {"P1": dict(DEFAULT_PLAYER_DATA), "P2": dict(DEFAULT_PLAYER_DATA)}
 
@@ -133,7 +172,7 @@ def reload_mods():
         
     try:
         for filename in os.listdir(mods_dir):
-            if filename.endswith(".json") and (not active_mods or filename in active_mods):
+            if filename.endswith(".json") and (filename in active_mods):
                 try:
                     with open(os.path.join(mods_dir, filename), "r") as f:
                         ext = json.load(f)

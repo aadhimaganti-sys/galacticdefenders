@@ -1,0 +1,49 @@
+{
+    "name": "New Characters Pack",
+    "ships": {
+        "the_tank": {
+            "name": "The Tank",
+            "desc": "Incredibly slow, but starts with 3 powerful blasters. Built like a brick.",
+            "speed": 3,
+            "shoot_delay": 250,
+            "start_blasters": 3,
+            "color": [100, 150, 100],
+            "wing_color": [50, 80, 50],
+            "cost": 0,
+            "unlocked_by_default": true
+        },
+        "the_speedster": {
+            "name": "The Speedster",
+            "desc": "Blistering fast but hard to control. Great for dodging.",
+            "speed": 16,
+            "shoot_delay": 180,
+            "start_blasters": 1,
+            "color": [255, 255, 0],
+            "wing_color": [255, 100, 0],
+            "cost": 0,
+            "unlocked_by_default": true
+        },
+        "the_phantom": {
+            "name": "The Phantom",
+            "desc": "A stealth interceptor with advanced dual plasma blasters.",
+            "speed": 9,
+            "shoot_delay": 120,
+            "start_blasters": 2,
+            "color": [80, 80, 90],
+            "wing_color": [30, 30, 40],
+            "cost": 0,
+            "unlocked_by_default": true
+        },
+        "golden_eagle": {
+            "name": "Golden Eagle",
+            "desc": "The ultimate balanced fighter, gilded in cosmic gold.",
+            "speed": 10,
+            "shoot_delay": 150,
+            "start_blasters": 4,
+            "color": [255, 215, 0],
+            "wing_color": [218, 165, 32],
+            "cost": 0,
+            "unlocked_by_default": true
+        }
+    }
+}

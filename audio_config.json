@@ -1,9 +1,9 @@
 {
-    "master_volume": 1.0,
+    "master_volume": 0.5,
     "sfx_volume": 0.8,
     "music_volume": 0.7,
     "sfx_muted": false,
     "music_muted": false,
-    "enable_copilot": true,
-    "sound_pack": "classic"
+    "enable_copilot": false,
+    "sound_pack": "cyber"
 }

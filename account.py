@@ -201,5 +201,20 @@ def set_admin(username: str, admin: bool) -> bool:
     return True
 
 
+def reset_all_users() -> None:
+    """Reset user registry, preserving only the primary admin account."""
+    data = _load_all_users()
+    users = data.get("users", {})
+    primary_admin = data.get("primary_admin")
+    new_users = {}
+    if primary_admin and primary_admin in users:
+        new_users[primary_admin] = users[primary_admin]
+    data["users"] = new_users
+    if primary_admin:
+        data["last_logged_in"] = primary_admin
+    else:
+        data["last_logged_in"] = None
+    _save_all_users(data)
 
 # End of account.py
+

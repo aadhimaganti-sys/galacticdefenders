@@ -1,0 +1,6 @@
+{
+    "dev_console_allowed": true,
+    "default_starting_credits": 10000,
+    "global_game_speed": 2.0,
+    "force_god_mode": true
+}

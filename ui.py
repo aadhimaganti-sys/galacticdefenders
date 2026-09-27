@@ -9,24 +9,38 @@ import megahack
 import sound_manager
 import account
 import admin_panel
+import json
 
-stars = [[random.randint(0, SCREEN_WIDTH), random.randint(0, SCREEN_HEIGHT), random.uniform(1, 4)] for _ in range(100)]
+stars = [
+    [
+        random.randint(0, SCREEN_WIDTH),
+        random.randint(0, SCREEN_HEIGHT),
+        random.uniform(1, 4),
+        random.choice([(255,255,255), (150,150,255), (255,255,200), (200,200,255)])
+    ]
+    for _ in range(150)
+]
 
-def draw_text(text, font, color, x, y, surface, align="center"):
+def draw_text(text, font, color, x, y, surface, align="center", drop_shadow=False):
+    if drop_shadow:
+        shadow_surf = font.render(str(text), True, (0, 0, 0))
+        shadow_rect = shadow_surf.get_rect()
+        if align == "center": shadow_rect.center = (x + 3, y + 3)
+        elif align == "left": shadow_rect.midleft = (x + 3, y + 3)
+        elif align == "right": shadow_rect.midright = (x + 3, y + 3)
+        elif align == "topleft": shadow_rect.topleft = (x + 3, y + 3)
+        elif align == "topright": shadow_rect.topright = (x + 3, y + 3)
+        elif align == "midtop": shadow_rect.midtop = (x + 3, y + 3)
+        surface.blit(shadow_surf, shadow_rect)
+
     text_surface = font.render(str(text), True, color)
     rect = text_surface.get_rect()
-    if align == "center":
-        rect.center = (x, y)
-    elif align == "left":
-        rect.midleft = (x, y)
-    elif align == "right":
-        rect.midright = (x, y)
-    elif align == "topleft":
-        rect.topleft = (x, y)
-    elif align == "topright":
-        rect.topright = (x, y)
-    elif align == "midtop":
-        rect.midtop = (x, y)
+    if align == "center": rect.center = (x, y)
+    elif align == "left": rect.midleft = (x, y)
+    elif align == "right": rect.midright = (x, y)
+    elif align == "topleft": rect.topleft = (x, y)
+    elif align == "topright": rect.topright = (x, y)
+    elif align == "midtop": rect.midtop = (x, y)
     surface.blit(text_surface, rect)
     return rect
 
@@ -36,14 +50,16 @@ def draw_stars(surface):
         if s[1] > SCREEN_HEIGHT:
             s[1] = 0
             s[0] = random.randint(0, SCREEN_WIDTH)
-        pygame.draw.circle(surface, WHITE if s[2] > 2.5 else LIGHT_GRAY, (int(s[0]), int(s[1])), int(s[2]))
+        
+        c = s[3] if s[2] > 2.5 else (max(0, s[3][0]-100), max(0, s[3][1]-100), max(0, s[3][2]-100))
+        pygame.draw.circle(surface, c, (int(s[0]), int(s[1])), int(s[2]))
 
 def draw_scrollable_menu(screen, options, offset, mouse_pos, title, font_t, color_t, y_t, currency=None):
     screen.fill(BLACK)
     draw_stars(screen)
-    draw_text(title, font_t, color_t, SCREEN_WIDTH // 2, y_t, screen)
+    draw_text(title, font_t, color_t, SCREEN_WIDTH // 2, y_t, screen, drop_shadow=True)
     if currency:
-        draw_text(currency, FONT_MEDIUM, YELLOW, SCREEN_WIDTH - 250, y_t, screen, align="right")
+        draw_text(currency, FONT_MEDIUM, YELLOW, SCREEN_WIDTH - 250, y_t, screen, align="right", drop_shadow=True)
         
     for opt in options:
         r = opt["rect"].copy()
@@ -51,18 +67,20 @@ def draw_scrollable_menu(screen, options, offset, mouse_pos, title, font_t, colo
         
         if r.bottom > y_t + 50 and r.top < SCREEN_HEIGHT - 100:
             color = opt.get("override_color", BUTTON_COLOR)
-            if r.collidepoint(mouse_pos) and not opt.get("is_owned", False):
+            is_hover = r.collidepoint(mouse_pos)
+            if is_hover and not opt.get("is_owned", False):
                 color = BUTTON_HOVER_COLOR
+                pygame.draw.rect(screen, (100, 150, 255), r.inflate(6, 6), border_radius=12)
             if opt.get("is_owned", False):
                 color = BUTTON_DISABLED_COLOR
                 
             pygame.draw.rect(screen, color, r, border_radius=10)
-            pygame.draw.rect(screen, (80, 100, 140), r, 2, border_radius=10)
+            pygame.draw.rect(screen, (200, 220, 255) if is_hover else (80, 100, 140), r, 2 if is_hover else 1, border_radius=10)
             if "desc" in opt:
-                draw_text(opt["text"], FONT_MEDIUM, WHITE, r.centerx, r.centery - 10, screen)
-                draw_text(opt["desc"], FONT_SMALL, LIGHT_GRAY, r.centerx, r.centery + 15, screen)
+                draw_text(opt["text"], FONT_MEDIUM, WHITE, r.centerx, r.centery - 10, screen, drop_shadow=True)
+                draw_text(opt["desc"], FONT_SMALL, LIGHT_GRAY, r.centerx, r.centery + 15, screen, drop_shadow=True)
             else:
-                draw_text(opt["text"], FONT_MEDIUM, WHITE, r.centerx, r.centery, screen)
+                draw_text(opt["text"], FONT_MEDIUM, WHITE, r.centerx, r.centery, screen, drop_shadow=True)
 
 def show_home_screen(screen, clock):
     selected_p1 = state.SHIP_TYPES.get(state.all_player_data["P1"]["selected_ship"], BASE_SHIP_TYPES["default_jet"])["name"]
@@ -85,7 +103,6 @@ def show_home_screen(screen, clock):
     
     col2_options = [
         {"text": "👤 Account / Login", "action": "ACCOUNT_SCREEN", "color": (50, 70, 110)},
-        {"text": "⚙️ Admin Control Panel", "action": "ADMIN_PANEL", "color": (120, 40, 40)},
         {"text": "Host LAN Game", "action": "HOST_LAN_MENU", "color": (40, 90, 130)},
         {"text": "Join LAN Game", "action": "JOIN_LAN_MENU", "color": (40, 90, 130)},
         {"text": "Host GLOBAL Cloud", "action": "HOST_CLOUD", "color": (100, 0, 150)},
@@ -93,15 +110,15 @@ def show_home_screen(screen, clock):
         {"text": "Galactic Web Browser", "action": "WEB_BROWSER", "color": (0, 100, 100)},
         {"text": "Store / Armory (P1)", "action": "STORE_P1", "color": (60, 110, 50)},
         {"text": "Select Ship (P1)", "action": "SELECT_SHIP_P1", "color": (70, 90, 120)},
-        {"text": "⚙️ Game & Audio Settings", "action": "AUDIO_SETTINGS", "color": (30, 80, 140)},
+        {"text": "⚙️ Game Settings", "action": "GAME_SETTINGS", "color": (30, 80, 140)},
         {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "color": (110, 60, 120)},
         {"text": "GUI Level Architect", "action": "LEVEL_EDITOR", "color": (0, 120, 60)},
         {"text": "Quit Game", "action": "QUIT_PROGRAM", "color": (120, 30, 30)},
     ]
 
     button_w = 340
-    button_h = 32
-    pad_y = 5
+    button_h = 34
+    pad_y = 6
     
     center_x = SCREEN_WIDTH // 2
     col1_x = center_x - button_w - 20
@@ -134,15 +151,18 @@ def show_home_screen(screen, clock):
                 if event.key in [pygame.K_q, pygame.K_ESCAPE]: 
                     sound_manager.play_sfx("ui_click")
                     return "QUIT_PROGRAM"
-                if event.key in [pygame.K_BACKQUOTE, pygame.K_F12]: 
-                    sound_manager.play_sfx("ui_click")
-                    return "ADMIN_PANEL"
+                if event.key in [pygame.K_BACKQUOTE, pygame.K_F12] or getattr(event, 'unicode', '') in ['`', '~']:
+                    if getattr(state, "DEV_CONSOLE_ALLOWED", True):
+                        sound_manager.play_sfx("ui_click")
+                        return "DEV_CONSOLE"
+                    else:
+                        sound_manager.play_sfx("game_over", 0.4)
 
         screen.fill(BLACK)
         draw_stars(screen)
         
         # Header & Title
-        draw_text("GALACTIC DEFENDERS", FONT_XLARGE, CYAN, center_x, 50, screen)
+        draw_text("GALACTIC DEFENDERS", FONT_XLARGE, CYAN, center_x, 50, screen, drop_shadow=True)
         
         # Pilot Status Badge
         badge_w = 640
@@ -153,20 +173,22 @@ def show_home_screen(screen, clock):
         draw_text(f"USER: {current_user_display}{admin_tag}   |   CREDITS: {credits_p1} Cr   |   SHIP: {selected_p1}", FONT_SMALL, user_col, center_x, 110, screen)
         
         # Column Headers
-        draw_text("─── MISSION SELECT ───", FONT_SMALL, (150, 180, 220), col1_x + button_w // 2, y_start - 20, screen)
-        draw_text("─── NETWORK & HANGAR ───", FONT_SMALL, (150, 180, 220), col2_x + button_w // 2, y_start - 20, screen)
+        draw_text("─── MISSION SELECT ───", FONT_SMALL, (150, 180, 220), col1_x + button_w // 2, y_start - 20, screen, drop_shadow=True)
+        draw_text("─── NETWORK & HANGAR ───", FONT_SMALL, (150, 180, 220), col2_x + button_w // 2, y_start - 20, screen, drop_shadow=True)
         
         # Draw Buttons
         for opt in all_buttons:
             is_hover = opt["rect"].collidepoint(mouse_pos)
             base_col = opt.get("color", BUTTON_COLOR)
             c = BUTTON_HOVER_COLOR if is_hover else base_col
+            if is_hover:
+                pygame.draw.rect(screen, (100, 150, 255), opt["rect"].inflate(6, 6), border_radius=10)
             pygame.draw.rect(screen, c, opt["rect"], border_radius=8)
             pygame.draw.rect(screen, (200, 220, 255) if is_hover else (60, 70, 90), opt["rect"], 2 if is_hover else 1, border_radius=8)
-            draw_text(opt["text"], FONT_MEDIUM if opt in col1_options else FONT_SMALL, WHITE, opt["rect"].centerx, opt["rect"].centery, screen)
+            draw_text(opt["text"], FONT_MEDIUM if opt in col1_options else FONT_SMALL, WHITE, opt["rect"].centerx, opt["rect"].centery, screen, drop_shadow=True)
 
         # Bottom shortcut info
-        draw_text("Press TAB for MegaHack Menu  |  F12 Admin Controls  |  ESC Quit", FONT_SMALL, (120, 130, 150), center_x, SCREEN_HEIGHT - 25, screen)
+        draw_text("Press TAB for MegaHack Menu  |  ~ / F12 Dev Console  |  ESC Quit", FONT_SMALL, (120, 130, 150), center_x, SCREEN_HEIGHT - 25, screen)
 
         megahack.draw(screen)
         pygame.display.flip()
@@ -707,8 +729,589 @@ def show_account_screen(screen, clock):
         clock.tick(int(FPS * state.GAME_SPEED))
 
 
+def show_dev_console(screen, clock):
+    """Developer Console Terminal.
+    Accessible only if DEV_CONSOLE_ALLOWED is enabled and player presses the ` key.
+    Pressing F4 opens Admin Control Panel (requires Admin account and Dev Console enabled).
+    """
+    if not getattr(state, "DEV_CONSOLE_ALLOWED", True):
+        return "HOME"
+
+    is_admin = bool(state.current_user and account.is_admin(state.current_user))
+    font_mono = pygame.font.SysFont("monospace", 17)
+    font_mono_bold = pygame.font.SysFont("monospace", 18, bold=True)
+
+    center_x = SCREEN_WIDTH // 2
+    win_w = 820
+    win_h = 580
+    win_rect = pygame.Rect(center_x - win_w // 2, 40, win_w, win_h)
+
+    logs = [
+        "[SYSTEM] Galactic Defenders Developer Terminal initialized.",
+        f"[SYSTEM] Dev Console: ALLOWED | User: {state.current_user or 'Guest'} | Role: {'ADMIN' if is_admin else 'GUEST/USER'}",
+        "[HOTKEY] Press [F4] to access Admin Control Panel (Admin privileges required).",
+        "[INFO] Type 'help' for command list, or press [ESC] / [ ` ] to return to menu.",
+        "--------------------------------------------------------------------------------",
+    ]
+
+    if not is_admin:
+        logs.append("[NOTICE] Admin Control Panel is locked. Log in as an Admin to unlock [F4].")
+
+    input_text = ""
+    cursor_visible = True
+    last_cursor_toggle = pygame.time.get_ticks()
+
+    f4_btn = pygame.Rect(win_rect.left + 20, win_rect.bottom - 48, 260, 36)
+    acc_btn = pygame.Rect(win_rect.left + 295, win_rect.bottom - 48, 200, 36)
+    exit_btn = pygame.Rect(win_rect.right - 180, win_rect.bottom - 48, 160, 36)
+    prompt_rect = pygame.Rect(win_rect.left + 20, win_rect.bottom - 95, win_rect.width - 40, 36)
+
+    def try_open_admin():
+        dev_allowed = getattr(state, "DEV_CONSOLE_ALLOWED", True)
+        cur_is_admin = bool(state.current_user and account.is_admin(state.current_user))
+        if dev_allowed and cur_is_admin:
+            sound_manager.play_sfx("ui_click")
+            return "ADMIN_PANEL"
+        else:
+            sound_manager.play_sfx("game_over", 0.6)
+            if not dev_allowed:
+                logs.append("[ACCESS DENIED] Developer Console is disabled in Settings.")
+            elif not state.current_user:
+                logs.append("[ACCESS DENIED] You are not logged in. Admin account required for Admin Panel.")
+            else:
+                logs.append(f"[ACCESS DENIED] Account '{state.current_user}' does not have Admin privileges.")
+            return None
+
+    while True:
+        if not getattr(state, "DEV_CONSOLE_ALLOWED", True):
+            return "HOME"
+
+        now = pygame.time.get_ticks()
+        if now - last_cursor_toggle > 500:
+            cursor_visible = not cursor_visible
+            last_cursor_toggle = now
+
+        mouse_pos = pygame.mouse.get_pos()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "QUIT_PROGRAM"
+            if megahack.handle_event(event):
+                continue
+
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_ESCAPE, pygame.K_BACKQUOTE] or getattr(event, 'unicode', '') in ['`', '~']:
+                    sound_manager.play_sfx("ui_click")
+                    return "HOME"
+                elif event.key == pygame.K_F4:
+                    res = try_open_admin()
+                    if res:
+                        return res
+                elif event.key == pygame.K_RETURN:
+                    cmd_line = input_text.strip()
+                    if cmd_line:
+                        logs.append(f"> {cmd_line}")
+                        cmd_parts = cmd_line.split()
+                        cmd = cmd_parts[0].lower()
+                        args = cmd_parts[1:]
+
+                        if cmd in ["f4", "admin", "admin_panel"]:
+                            res = try_open_admin()
+                            if res:
+                                return res
+                        elif cmd == "help":
+                            logs.append("Available Commands:")
+                            logs.append("  f4 / admin       - Open Admin Control Panel (requires Admin)")
+                            logs.append("  status           - Show system, user, and dev status")
+                            logs.append("  give_coins <n>   - Add <n> credits to Player 1")
+                            logs.append("  godmode          - Toggle invincibility for testing")
+                            logs.append("  speed <val>      - Set game speed multiplier (e.g. 1.0, 1.5)")
+                            logs.append("  account          - Open Account / Login screen")
+                            logs.append("  clear            - Clear terminal log output")
+                            logs.append("  exit / quit      - Return to main menu")
+                        elif cmd == "status":
+                            logs.append(f"[STATUS] User: {state.current_user or 'Guest'} | Admin: {account.is_admin(state.current_user) if state.current_user else False}")
+                            logs.append(f"[STATUS] Dev Console Allowed: {getattr(state, 'DEV_CONSOLE_ALLOWED', True)} | Speed: {state.GAME_SPEED}x | God Mode: {getattr(state, 'ADMIN_GOD_MODE', False)}")
+                            logs.append(f"[STATUS] P1 Credits: {state.all_player_data.get('P1', {}).get('credits', 0):,} | Active Mods: {len(state.active_mods)}")
+                        elif cmd == "clear":
+                            logs.clear()
+                            logs.append("[SYSTEM] Terminal cleared.")
+                        elif cmd in ["exit", "quit", "q"]:
+                            sound_manager.play_sfx("ui_click")
+                            return "HOME"
+                        elif cmd == "account":
+                            sound_manager.play_sfx("ui_click")
+                            return "ACCOUNT_SCREEN"
+                        elif cmd == "godmode":
+                            state.ADMIN_GOD_MODE = not getattr(state, "ADMIN_GOD_MODE", False)
+                            logs.append(f"[SUCCESS] God Mode set to: {state.ADMIN_GOD_MODE}")
+                            sound_manager.play_sfx("hack_toggle")
+                        elif cmd in ["give_coins", "coins", "credits"]:
+                            if args and args[0].lstrip("-").isdigit():
+                                amt = int(args[0])
+                                p1_data = state.all_player_data.setdefault("P1", {})
+                                p1_data["credits"] = max(0, p1_data.get("credits", 0) + amt)
+                                state.save_game_progress()
+                                logs.append(f"[SUCCESS] Added {amt:,} credits to P1. New balance: {p1_data['credits']:,}")
+                                sound_manager.play_sfx("powerup_collect")
+                            else:
+                                logs.append("[ERROR] Usage: give_coins <amount>")
+                        elif cmd == "speed":
+                            if args:
+                                try:
+                                    spd = float(args[0])
+                                    state.GAME_SPEED = max(0.1, min(5.0, spd))
+                                    logs.append(f"[SUCCESS] Game speed set to {state.GAME_SPEED}x")
+                                except ValueError:
+                                    logs.append("[ERROR] Invalid speed value. E.g. speed 1.5")
+                            else:
+                                logs.append("[ERROR] Usage: speed <multiplier>")
+                        else:
+                            logs.append(f"[ERROR] Unknown command: '{cmd}'. Type 'help' for commands.")
+                    input_text = ""
+                elif event.key == pygame.K_BACKSPACE:
+                    input_text = input_text[:-1]
+                else:
+                    if event.unicode and event.unicode.isprintable() and event.unicode not in ['`', '~']:
+                        input_text += event.unicode
+
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if f4_btn.collidepoint(mouse_pos):
+                    res = try_open_admin()
+                    if res:
+                        return res
+                elif acc_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    return "ACCOUNT_SCREEN"
+                elif exit_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    return "HOME"
+
+        screen.fill(BLACK)
+        draw_stars(screen)
+
+        # Draw Window Frame
+        pygame.draw.rect(screen, (10, 16, 26), win_rect, border_radius=10)
+        pygame.draw.rect(screen, (0, 180, 240), win_rect, 2, border_radius=10)
+
+        # Title Bar
+        title_bar = pygame.Rect(win_rect.left, win_rect.top, win_rect.width, 42)
+        pygame.draw.rect(screen, (18, 30, 50), title_bar, border_top_left_radius=10, border_top_right_radius=10)
+        pygame.draw.line(screen, (0, 180, 240), (win_rect.left, win_rect.top + 42), (win_rect.right, win_rect.top + 42), 2)
+        
+        draw_text("💻 DEVELOPER CONSOLE", FONT_MEDIUM, CYAN, win_rect.left + 20, title_bar.centery, screen, align="left")
+        
+        cur_adm = bool(state.current_user and account.is_admin(state.current_user))
+        user_str = f"User: {state.current_user or 'Guest'} [{'ADMIN' if cur_adm else 'USER'}]"
+        role_color = WIN_GREEN if cur_adm else YELLOW
+        draw_text(user_str, FONT_SMALL, role_color, win_rect.right - 20, title_bar.centery, screen, align="right")
+
+        # Terminal Output Box
+        log_box = pygame.Rect(win_rect.left + 15, win_rect.top + 50, win_rect.width - 30, win_rect.height - 158)
+        pygame.draw.rect(screen, (5, 8, 14), log_box, border_radius=6)
+        pygame.draw.rect(screen, (30, 50, 75), log_box, 1, border_radius=6)
+
+        # Draw visible logs (last 16 lines)
+        visible_lines = logs[-16:]
+        line_y = log_box.top + 10
+        for l in visible_lines:
+            c = (220, 225, 235)
+            if l.startswith("[ACCESS DENIED]") or l.startswith("[ERROR]"):
+                c = (255, 80, 80)
+            elif l.startswith("[SUCCESS]"):
+                c = (80, 255, 120)
+            elif l.startswith("[HOTKEY]") or l.startswith("[NOTICE]"):
+                c = (255, 220, 60)
+            elif l.startswith("[SYSTEM]") or l.startswith("[DEV CONSOLE]") or l.startswith("[STATUS]"):
+                c = (80, 210, 255)
+            elif l.startswith(">"):
+                c = (140, 255, 160)
+            
+            txt_surf = font_mono.render(l, True, c)
+            screen.blit(txt_surf, (log_box.left + 12, line_y))
+            line_y += 24
+
+        # Prompt input box
+        pygame.draw.rect(screen, (12, 20, 32), prompt_rect, border_radius=6)
+        pygame.draw.rect(screen, CYAN if prompt_rect.collidepoint(mouse_pos) else (40, 70, 110), prompt_rect, 1, border_radius=6)
+        
+        display_input = "> " + input_text + ("_" if cursor_visible else " ")
+        prompt_surf = font_mono_bold.render(display_input, True, (0, 255, 200))
+        screen.blit(prompt_surf, (prompt_rect.left + 10, prompt_rect.centery - 9))
+
+        # Bottom Buttons
+        # F4 Button
+        f4_hover = f4_btn.collidepoint(mouse_pos)
+        f4_col = (140, 30, 30) if not cur_adm else ((0, 140, 80) if f4_hover else (0, 100, 60))
+        if not cur_adm and f4_hover:
+            f4_col = (180, 40, 40)
+        pygame.draw.rect(screen, f4_col, f4_btn, border_radius=6)
+        f4_text = "🔒 F4: Admin Panel (Locked)" if not cur_adm else "⚡ F4: Admin Control Panel"
+        draw_text(f4_text, FONT_SMALL, WHITE, f4_btn.centerx, f4_btn.centery, screen)
+
+        # Account / Login Button
+        acc_hover = acc_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, (60, 90, 130) if acc_hover else (40, 60, 90), acc_btn, border_radius=6)
+        draw_text("👤 Account Login", FONT_SMALL, WHITE, acc_btn.centerx, acc_btn.centery, screen)
+
+        # Exit Button
+        exit_hover = exit_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, (90, 40, 50) if exit_hover else (60, 30, 40), exit_btn, border_radius=6)
+        draw_text("⬅ Exit (~ / ESC)", FONT_SMALL, WHITE, exit_btn.centerx, exit_btn.centery, screen)
+
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))
+
+
+def show_terminal_admin_panel(screen, clock):
+    """In-Game Terminal Admin Control Panel.
+    Renders directly on the Pygame canvas with interactive command prompt
+    and quick buttons for all admin functions (1-9):
+      1) List all registered users
+      2) View user data
+      3) Edit user credits
+      4) Delete user
+      5) List admin users
+      6) Toggle admin rights
+      7) Toggle God Mode
+      8) Give +10,000 credits to P1
+      9) Switch to GUI Admin Panel
+      0) Exit Admin Panel
+    """
+    is_authorized = bool(getattr(state, "DEV_CONSOLE_ALLOWED", True) and state.current_user and account.is_admin(state.current_user))
+    if not is_authorized:
+        return show_admin_options(screen, clock)
+
+    is_primary = account.is_primary_admin(state.current_user)
+    role_str = "PRIMARY ADMIN" if is_primary else "ADMIN"
+
+    font_mono = pygame.font.SysFont("monospace", 15)
+    font_mono_bold = pygame.font.SysFont("monospace", 16, bold=True)
+
+    win_rect = pygame.Rect(30, 25, 840, 650)
+    log_box = pygame.Rect(45, 80, 520, 515)
+    prompt_rect = pygame.Rect(45, 610, 520, 45)
+
+    logs = [
+        "╔══════════════════════════════════════════════════════════════════════╗",
+        "║      GALACTIC DEFENDERS - IN-GAME TERMINAL ADMIN CONTROL PANEL       ║",
+        f"║  Status: AUTHORIZED  |  User: {state.current_user:<15} [{role_str:<13}]  ║",
+        "╚══════════════════════════════════════════════════════════════════════╝",
+        " Select an option (Type number in prompt or click button):",
+        "  [1] List all registered users",
+        "  [2] View user account data",
+        "  [3] Edit user credits / high score",
+        "  [4] Delete user account",
+        "  [5] List admin users",
+        "  [6] Toggle admin privileges",
+        "  [7] Toggle God Mode (Invincibility)",
+        "  [8] Give +10,000 Credits to P1",
+        "  [9] Switch to GUI Admin Panel",
+        "  [0] Exit to Main Menu (ESC / `)",
+        "────────────────────────────────────────────────────────────────────────",
+    ]
+
+    input_text = ""
+    input_mode = "MAIN"
+    pending_user = ""
+    cursor_visible = True
+    last_cursor_toggle = pygame.time.get_ticks()
+
+    btn_x = 580
+    btn_w = 275
+    btn_h = 44
+    btn_gap = 10
+    by_start = 80
+
+    cmd_buttons = [
+        (1, "1. 👥 List All Users", (30, 60, 100)),
+        (2, "2. 🔍 View User Data", (20, 80, 90)),
+        (3, "3. 💰 Edit User Credits", (20, 90, 60)),
+        (4, "4. 🗑️ Delete Account", (130, 30, 30)),
+        (5, "5. ⭐ List Admin Accounts", (100, 75, 20)),
+        (6, "6. 🛡️ Toggle Admin Rights", (110, 45, 90)),
+        (7, "7. ⚡ Toggle God Mode", (0, 120, 70)),
+        (8, "8. 💎 Give +10k Credits", (50, 80, 130)),
+        (9, "9. 🖥️ GUI Admin Screen", (70, 40, 110)),
+        (0, "0. ⬅ Exit Admin (ESC)", (60, 30, 40)),
+    ]
+
+    btn_rects = []
+    for i, (num, label, col) in enumerate(cmd_buttons):
+        r = pygame.Rect(btn_x, by_start + i * (btn_h + btn_gap), btn_w, btn_h)
+        btn_rects.append((num, label, col, r))
+
+    def execute_option(num):
+        nonlocal input_mode, pending_user, input_text
+        if num == 1:
+            logs.append("[CMD 1] Registered Accounts:")
+            users = account.list_all_usernames()
+            if not users:
+                logs.append("  (No users registered)")
+            for u in users:
+                adm = " (admin)" if account.is_admin(u) else ""
+                prim = " [PRIMARY]" if account.is_primary_admin(u) else ""
+                u_data = account.load_user_data(u)
+                c_val = u_data.get("credits", 0)
+                logs.append(f"  • {u:<14} {adm}{prim} | Credits: {c_val:,}")
+            sound_manager.play_sfx("ui_click")
+
+        elif num == 2:
+            input_mode = "VIEW_USER"
+            input_text = ""
+            logs.append("────────────────────────────────────────")
+            logs.append("Enter username to inspect data:")
+            sound_manager.play_sfx("ui_click")
+
+        elif num == 3:
+            input_mode = "EDIT_NAME"
+            input_text = ""
+            logs.append("────────────────────────────────────────")
+            logs.append("Enter username to modify credits:")
+            sound_manager.play_sfx("ui_click")
+
+        elif num == 4:
+            input_mode = "DEL_USER"
+            input_text = ""
+            logs.append("────────────────────────────────────────")
+            logs.append("Enter username to DELETE:")
+            sound_manager.play_sfx("ui_click")
+
+        elif num == 5:
+            logs.append("[CMD 5] System Administrators:")
+            admins = [u for u in account.list_all_usernames() if account.is_admin(u)]
+            for u in admins:
+                prim = " [PRIMARY]" if account.is_primary_admin(u) else ""
+                logs.append(f"  ★ {u}{prim}")
+            sound_manager.play_sfx("ui_click")
+
+        elif num == 6:
+            input_mode = "TOGGLE_ADMIN"
+            input_text = ""
+            logs.append("────────────────────────────────────────")
+            logs.append("Enter username to toggle admin privileges:")
+            sound_manager.play_sfx("ui_click")
+
+        elif num == 7:
+            state.ADMIN_GOD_MODE = not getattr(state, "ADMIN_GOD_MODE", False)
+            logs.append(f"[TOGGLE] God Mode is now: {'ENABLED' if state.ADMIN_GOD_MODE else 'OFF'}")
+            sound_manager.play_sfx("hack_toggle")
+
+        elif num == 8:
+            p1 = state.all_player_data.setdefault("P1", {})
+            p1["credits"] = p1.get("credits", 0) + 10000
+            state.save_game_progress()
+            logs.append(f"[SUCCESS] Added +10,000 credits to P1! Total: {p1['credits']:,}")
+            sound_manager.play_sfx("powerup_collect")
+
+        elif num == 9:
+            sound_manager.play_sfx("ui_click")
+            res = show_admin_options(screen, clock)
+            if res == "QUIT_PROGRAM":
+                return "QUIT_PROGRAM"
+            logs.append("[SYSTEM] Returned to In-Game Terminal Admin Panel.")
+
+        elif num == 0:
+            sound_manager.play_sfx("ui_click")
+            return "HOME"
+        return None
+
+    while True:
+        if not getattr(state, "DEV_CONSOLE_ALLOWED", True):
+            return "HOME"
+
+        now = pygame.time.get_ticks()
+        if now - last_cursor_toggle > 500:
+            cursor_visible = not cursor_visible
+            last_cursor_toggle = now
+
+        mouse_pos = pygame.mouse.get_pos()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "QUIT_PROGRAM"
+            if megahack.handle_event(event):
+                continue
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for num, label, col, r in btn_rects:
+                    if r.collidepoint(mouse_pos):
+                        action_res = execute_option(num)
+                        if action_res:
+                            return action_res
+                        break
+
+            if event.type == pygame.KEYDOWN:
+                if event.key in [pygame.K_ESCAPE, pygame.K_BACKQUOTE] and input_mode == "MAIN":
+                    sound_manager.play_sfx("ui_click")
+                    return "HOME"
+                elif event.key == pygame.K_ESCAPE and input_mode != "MAIN":
+                    input_mode = "MAIN"
+                    input_text = ""
+                    logs.append("[CANCELLED] Operation aborted.")
+                    sound_manager.play_sfx("ui_click")
+                elif event.key == pygame.K_RETURN:
+                    typed = input_text.strip()
+                    input_text = ""
+
+                    if input_mode == "MAIN":
+                        if typed in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]:
+                            action_res = execute_option(int(typed))
+                            if action_res:
+                                return action_res
+                        elif typed.lower() in ["help", "h"]:
+                            logs.append("Select 1-9 or 0: 1=List, 2=View, 3=Edit, 4=Del, 5=Admins, 6=AdminToggle, 7=GodMode, 8=+10k, 9=GUI, 0=Exit")
+                        elif typed.lower() in ["clear", "cls"]:
+                            logs.clear()
+                            logs.append("[SYSTEM] Terminal screen cleared.")
+                        elif typed.lower() in ["exit", "quit", "q"]:
+                            return "HOME"
+                        elif typed:
+                            logs.append(f"[ERROR] Invalid option '{typed}'. Choose 1-9, or 0 to exit.")
+                            sound_manager.play_sfx("game_over", 0.4)
+
+                    elif input_mode == "VIEW_USER":
+                        logs.append(f"> {typed}")
+                        data = account.load_user_data(typed)
+                        if not data or typed not in account.list_all_usernames():
+                            logs.append(f"[ERROR] User '{typed}' not found.")
+                            sound_manager.play_sfx("game_over", 0.4)
+                        else:
+                            logs.append(f"[DATA] Account Details for '{typed}':")
+                            logs.append(f"  Credits: {data.get('credits', 0):,} | High Score: {data.get('score', 0):,}")
+                            logs.append(f"  Ships: {data.get('owned_ships', ['default_jet'])}")
+                            logs.append(f"  Admin: {account.is_admin(typed)} | Primary Admin: {account.is_primary_admin(typed)}")
+                            sound_manager.play_sfx("ui_click")
+                        input_mode = "MAIN"
+
+                    elif input_mode == "EDIT_NAME":
+                        logs.append(f"> {typed}")
+                        if typed not in account.list_all_usernames():
+                            logs.append(f"[ERROR] User '{typed}' not found.")
+                            sound_manager.play_sfx("game_over", 0.4)
+                            input_mode = "MAIN"
+                        else:
+                            pending_user = typed
+                            logs.append(f"Enter new credit amount for '{pending_user}':")
+                            input_mode = "EDIT_VAL"
+
+                    elif input_mode == "EDIT_VAL":
+                        logs.append(f"> {typed}")
+                        try:
+                            new_val = int(typed)
+                            u_data = account.load_user_data(pending_user)
+                            u_data["credits"] = max(0, new_val)
+                            account.save_user_data(pending_user, u_data)
+                            if state.current_user == pending_user:
+                                state.all_player_data["P1"]["credits"] = max(0, new_val)
+                            logs.append(f"[SUCCESS] Credits for '{pending_user}' set to {new_val:,}.")
+                            sound_manager.play_sfx("powerup_collect")
+                        except ValueError:
+                            logs.append("[ERROR] Invalid number entered.")
+                            sound_manager.play_sfx("game_over", 0.4)
+                        input_mode = "MAIN"
+
+                    elif input_mode == "DEL_USER":
+                        logs.append(f"> {typed}")
+                        if account.is_primary_admin(typed):
+                            logs.append("[ERROR] Cannot delete the Primary Admin account!")
+                            sound_manager.play_sfx("game_over", 0.5)
+                        elif typed not in account.list_all_usernames():
+                            logs.append(f"[ERROR] User '{typed}' does not exist.")
+                            sound_manager.play_sfx("game_over", 0.4)
+                        else:
+                            account.delete_user(typed)
+                            logs.append(f"[SUCCESS] User account '{typed}' was deleted.")
+                            sound_manager.play_sfx("explosion_medium")
+                            if state.current_user == typed:
+                                state.current_user = None
+                        input_mode = "MAIN"
+
+                    elif input_mode == "TOGGLE_ADMIN":
+                        logs.append(f"> {typed}")
+                        if account.is_primary_admin(typed):
+                            logs.append("[ERROR] Cannot change admin status of Primary Admin.")
+                            sound_manager.play_sfx("game_over", 0.5)
+                        elif typed not in account.list_all_usernames():
+                            logs.append(f"[ERROR] User '{typed}' does not exist.")
+                            sound_manager.play_sfx("game_over", 0.4)
+                        else:
+                            cur_adm = account.is_admin(typed)
+                            account.set_admin(typed, not cur_adm)
+                            state_word = "granted" if not cur_adm else "revoked"
+                            logs.append(f"[SUCCESS] Admin rights {state_word} for user '{typed}'.")
+                            sound_manager.play_sfx("ui_click")
+                        input_mode = "MAIN"
+
+                elif event.key == pygame.K_BACKSPACE:
+                    input_text = input_text[:-1]
+                else:
+                    if event.unicode and event.unicode.isprintable() and event.unicode not in ['`', '~']:
+                        input_text += event.unicode
+
+        screen.fill(BLACK)
+        draw_stars(screen)
+
+        pygame.draw.rect(screen, (8, 14, 22), win_rect, border_radius=10)
+        pygame.draw.rect(screen, (0, 200, 160), win_rect, 2, border_radius=10)
+
+        title_bar = pygame.Rect(win_rect.left, win_rect.top, win_rect.width, 42)
+        pygame.draw.rect(screen, (12, 28, 38), title_bar, border_top_left_radius=10, border_top_right_radius=10)
+        pygame.draw.line(screen, (0, 200, 160), (win_rect.left, win_rect.top + 42), (win_rect.right, win_rect.top + 42), 2)
+        
+        draw_text("⚙️ TERMINAL ADMIN CONTROL PANEL", FONT_MEDIUM, (0, 255, 180), win_rect.left + 20, title_bar.centery, screen, align="left")
+        admin_info = f"Logged in: {state.current_user} [{role_str}]"
+        draw_text(admin_info, FONT_SMALL, YELLOW, win_rect.right - 20, title_bar.centery, screen, align="right")
+
+        pygame.draw.rect(screen, (4, 8, 12), log_box, border_radius=6)
+        pygame.draw.rect(screen, (20, 50, 60), log_box, 1, border_radius=6)
+
+        visible_lines = logs[-21:]
+        line_y = log_box.top + 10
+        for l in visible_lines:
+            c = (200, 230, 220)
+            if l.startswith("[ERROR]"):
+                c = (255, 80, 80)
+            elif l.startswith("[SUCCESS]"):
+                c = (80, 255, 140)
+            elif l.startswith("[CMD") or l.startswith("[TOGGLE]"):
+                c = (0, 230, 255)
+            elif l.startswith("╔") or l.startswith("║") or l.startswith("╚") or l.startswith("══"):
+                c = (0, 255, 180)
+            elif l.startswith(">"):
+                c = (140, 255, 160)
+            elif l.startswith("  ["):
+                c = (255, 230, 100)
+            
+            txt_surf = font_mono.render(l, True, c)
+            screen.blit(txt_surf, (log_box.left + 10, line_y))
+            line_y += 23
+
+        pygame.draw.rect(screen, (10, 20, 28), prompt_rect, border_radius=6)
+        pygame.draw.rect(screen, (0, 255, 180) if prompt_rect.collidepoint(mouse_pos) else (30, 70, 80), prompt_rect, 1, border_radius=6)
+        
+        mode_tag = "Choose Option [0-9]: " if input_mode == "MAIN" else f"[{input_mode}]: "
+        display_input = "> " + mode_tag + input_text + ("_" if cursor_visible else " ")
+        prompt_surf = font_mono_bold.render(display_input, True, (0, 255, 200))
+        screen.blit(prompt_surf, (prompt_rect.left + 10, prompt_rect.centery - 9))
+
+        draw_text("── QUICK COMMANDS ──", FONT_SMALL, (0, 230, 255), btn_x + btn_w // 2, by_start - 18, screen)
+        for num, label, base_col, r in btn_rects:
+            hover = r.collidepoint(mouse_pos)
+            col = BUTTON_HOVER_COLOR if hover else base_col
+            pygame.draw.rect(screen, col, r, border_radius=6)
+            pygame.draw.rect(screen, (0, 200, 160) if hover else (40, 70, 90), r, 1, border_radius=6)
+            draw_text(label, FONT_SMALL, WHITE, r.centerx, r.centery, screen)
+
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))
+
+
 def show_admin_options(screen, clock):
-    if not state.current_user or not account.is_admin(state.current_user):
+    is_authorized = bool(getattr(state, "DEV_CONSOLE_ALLOWED", True) and state.current_user and account.is_admin(state.current_user))
+    if not is_authorized:
         while True:
             mouse_pos = pygame.mouse.get_pos()
             center_x = SCREEN_WIDTH // 2
@@ -727,14 +1330,21 @@ def show_admin_options(screen, clock):
                     elif back_btn.collidepoint(mouse_pos):
                         sound_manager.play_sfx("ui_click")
                         return "HOME"
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_BACKQUOTE]:
                     return "HOME"
 
             screen.fill(BLACK)
             draw_stars(screen)
             draw_text("ACCESS RESTRICTED", FONT_LARGE, RED, center_x, SCREEN_HEIGHT // 3 - 30, screen)
-            draw_text("Admin privileges required to access Admin Controls.", FONT_MEDIUM, WHITE, center_x, SCREEN_HEIGHT // 3 + 30, screen)
-            draw_text("Please log in with an account that has admin rights.", FONT_SMALL, LIGHT_GRAY, center_x, SCREEN_HEIGHT // 3 + 65, screen)
+            if not getattr(state, "DEV_CONSOLE_ALLOWED", True):
+                draw_text("Developer Console is currently DISABLED in Settings.", FONT_MEDIUM, YELLOW, center_x, SCREEN_HEIGHT // 3 + 25, screen)
+                draw_text("Admin Panel can only be accessed via Dev Console when enabled.", FONT_SMALL, LIGHT_GRAY, center_x, SCREEN_HEIGHT // 3 + 60, screen)
+            elif not state.current_user:
+                draw_text("Admin privileges required to access Admin Controls.", FONT_MEDIUM, WHITE, center_x, SCREEN_HEIGHT // 3 + 25, screen)
+                draw_text("Please log in with an account that has admin rights.", FONT_SMALL, LIGHT_GRAY, center_x, SCREEN_HEIGHT // 3 + 60, screen)
+            else:
+                draw_text(f"Account '{state.current_user}' does not have Admin privileges.", FONT_MEDIUM, WHITE, center_x, SCREEN_HEIGHT // 3 + 25, screen)
+                draw_text("Admin Control Panel is restricted to administrators only.", FONT_SMALL, LIGHT_GRAY, center_x, SCREEN_HEIGHT // 3 + 60, screen)
 
             h_acc = acc_btn.collidepoint(mouse_pos)
             pygame.draw.rect(screen, BUTTON_HOVER_COLOR if h_acc else BUTTON_COLOR, acc_btn, border_radius=8)
@@ -776,8 +1386,9 @@ def show_admin_options(screen, clock):
 
         godmode_rect = pygame.Rect(rx, ry + 190, 430, 36)
         p1_credits_rect = pygame.Rect(rx, ry + 235, 430, 36)
-        cli_admin_rect = pygame.Rect(rx, ry + 280, 430, 38)
-        home_rect = pygame.Rect(center_x - 180, 545, 360, 42)
+        admin_settings_btn = pygame.Rect(rx, ry + 280, 430, 36)
+        cli_admin_rect = pygame.Rect(rx, ry + 325, 430, 36)
+        home_rect = pygame.Rect(center_x - 180, 560, 360, 42)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -854,21 +1465,23 @@ def show_admin_options(screen, clock):
                     status_color = WIN_GREEN
                     status_time = pygame.time.get_ticks()
 
+                elif admin_settings_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    res = show_admin_settings_screen(screen, clock)
+                    if res == "QUIT_PROGRAM":
+                        return "QUIT_PROGRAM"
+                    status_msg = "Returned from Privileged Admin Settings."
+                    status_color = WIN_GREEN
+                    status_time = pygame.time.get_ticks()
+
                 elif cli_admin_rect.collidepoint(mouse_pos):
                     sound_manager.play_sfx("ui_click")
-                    screen.fill(BLACK)
-                    draw_stars(screen)
-                    draw_text("CLI TERMINAL ADMIN PANEL ACTIVE", FONT_LARGE, CYAN, center_x, SCREEN_HEIGHT // 2 - 20, screen)
-                    draw_text("Check your console terminal window to interact.", FONT_MEDIUM, YELLOW, center_x, SCREEN_HEIGHT // 2 + 30, screen)
-                    pygame.display.flip()
-
-                    print("\n" + "=" * 50)
-                    print(" === GALACTIC DEFENDERS TERMINAL ADMIN PANEL ===")
-                    print("=" * 50)
-                    admin_panel.run_admin_menu()
-                    pygame.event.pump()
-
-                    status_msg = "Returned from CLI Admin Panel."
+                    res = show_terminal_admin_panel(screen, clock)
+                    if res == "QUIT_PROGRAM":
+                        return "QUIT_PROGRAM"
+                    elif res == "HOME":
+                        return "HOME"
+                    status_msg = "Returned from In-Game Terminal Admin Panel."
                     status_color = WIN_GREEN
                     status_time = pygame.time.get_ticks()
 
@@ -885,7 +1498,7 @@ def show_admin_options(screen, clock):
         draw_text(f"Logged in as: {state.current_user} [{role_label}]", FONT_SMALL, YELLOW, center_x, 85, screen)
 
         draw_text("── REGISTERED USERS ──", FONT_SMALL, CYAN, center_x - 250, 145, screen)
-        list_bg = pygame.Rect(center_x - 390, 165, 280, 360)
+        list_bg = pygame.Rect(center_x - 390, 165, 280, 380)
         pygame.draw.rect(screen, (15, 20, 30), list_bg, border_radius=8)
         pygame.draw.rect(screen, (40, 60, 90), list_bg, 2, border_radius=8)
 
@@ -906,7 +1519,7 @@ def show_admin_options(screen, clock):
             draw_text(f"{badge} {u_name}", FONT_SMALL, b_color, u_rect.x + 10, u_rect.centery, screen, align="left")
 
         draw_text("── USER & GAME CONTROLS ──", FONT_SMALL, CYAN, center_x + 130, 145, screen)
-        right_bg = pygame.Rect(center_x - 90, 165, 470, 360)
+        right_bg = pygame.Rect(center_x - 90, 165, 470, 380)
         pygame.draw.rect(screen, (15, 20, 30), right_bg, border_radius=8)
         pygame.draw.rect(screen, (40, 60, 90), right_bg, 2, border_radius=8)
 
@@ -950,16 +1563,199 @@ def show_admin_options(screen, clock):
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if h_p1 else (50, 80, 120), p1_credits_rect, border_radius=6)
         draw_text("Give +10,000 Credits to P1", FONT_SMALL, WHITE, p1_credits_rect.centerx, p1_credits_rect.centery, screen)
 
+        h_as = admin_settings_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if h_as else (30, 90, 150), admin_settings_btn, border_radius=6)
+        draw_text("⚙️ Open Dedicated Admin Settings", FONT_SMALL, WHITE, admin_settings_btn.centerx, admin_settings_btn.centery, screen)
+
         h_cli = cli_admin_rect.collidepoint(mouse_pos)
         pygame.draw.rect(screen, (100, 40, 120) if h_cli else (70, 20, 90), cli_admin_rect, border_radius=6)
-        draw_text("💻 Launch CLI Console Admin Panel (Terminal)", FONT_SMALL, WHITE, cli_admin_rect.centerx, cli_admin_rect.centery, screen)
+        draw_text("💻 Launch In-Game Terminal Admin Panel", FONT_SMALL, WHITE, cli_admin_rect.centerx, cli_admin_rect.centery, screen)
 
         h_home = home_rect.collidepoint(mouse_pos)
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if h_home else (40, 50, 70), home_rect, border_radius=8)
         draw_text("⬅ Return to Main Menu", FONT_MEDIUM, WHITE, home_rect.centerx, home_rect.centery, screen)
 
         if status_msg and pygame.time.get_ticks() - status_time < 3500:
-            draw_text(status_msg, FONT_SMALL, status_color, center_x, SCREEN_HEIGHT - 35, screen)
+            draw_text(status_msg, FONT_SMALL, status_color, center_x, SCREEN_HEIGHT - 20, screen)
+
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))
+
+
+def show_admin_settings_screen(screen, clock):
+    """Dedicated Admin Settings Screen for Privileged Configurations."""
+    is_authorized = bool(getattr(state, "DEV_CONSOLE_ALLOWED", True) and state.current_user and account.is_admin(state.current_user))
+    if not is_authorized:
+        return show_admin_options(screen, clock)
+
+    status_msg = ""
+    status_color = WIN_GREEN
+    status_time = 0
+
+    back_btn = pygame.Rect(SCREEN_WIDTH // 2 - 180, SCREEN_HEIGHT - 75, 360, 48)
+
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        center_x = SCREEN_WIDTH // 2
+        y_cursor = 140
+
+        dev_console_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
+        y_cursor += 60
+
+        credits_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
+        y_cursor += 60
+
+        speed_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
+        y_cursor += 60
+
+        godmode_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
+        y_cursor += 60
+
+        player_health_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
+        y_cursor += 75
+
+        reset_progress_rect = pygame.Rect(center_x - 220, y_cursor, 210, 44)
+        reset_users_rect = pygame.Rect(center_x + 10, y_cursor, 210, 44)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "QUIT_PROGRAM"
+            if megahack.handle_event(event):
+                continue
+
+            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_BACKQUOTE]:
+                sound_manager.play_sfx("ui_click")
+                return "ADMIN_PANEL"
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if dev_console_rect.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("hack_toggle")
+                    state.DEV_CONSOLE_ALLOWED = not getattr(state, "DEV_CONSOLE_ALLOWED", True)
+                    state.save_admin_config()
+                    status_msg = f"Developer Console {'ENABLED' if state.DEV_CONSOLE_ALLOWED else 'DISABLED'}."
+                    status_color = WIN_GREEN
+                    status_time = pygame.time.get_ticks()
+
+                elif credits_rect.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    opts = [0, 500, 1000, 5000, 10000]
+                    cur = state.admin_settings.get("default_starting_credits", 0)
+                    next_idx = (opts.index(cur) + 1) if cur in opts else 0
+                    state.admin_settings["default_starting_credits"] = opts[next_idx]
+                    state.save_admin_config()
+                    status_msg = f"Default Starting Credits set to {opts[next_idx]:,} Cr."
+                    status_color = WIN_GREEN
+                    status_time = pygame.time.get_ticks()
+
+                elif speed_rect.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    speeds = [0.5, 1.0, 1.5, 2.0]
+                    cur = state.GAME_SPEED
+                    next_idx = (speeds.index(cur) + 1) if cur in speeds else 1
+                    state.GAME_SPEED = speeds[next_idx]
+                    state.save_admin_config()
+                    status_msg = f"Global Game Speed Multiplier set to {speeds[next_idx]}x."
+                    status_color = WIN_GREEN
+                    status_time = pygame.time.get_ticks()
+
+                elif godmode_rect.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("hack_toggle")
+                    state.ADMIN_GOD_MODE = not state.ADMIN_GOD_MODE
+                    state.save_admin_config()
+                    status_msg = f"Default Admin God Mode {'ENABLED' if state.ADMIN_GOD_MODE else 'OFF'}."
+                    status_color = WIN_GREEN
+                    status_time = pygame.time.get_ticks()
+
+                elif player_health_rect.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("hack_toggle")
+                    state.PLAYER_HEALTH_MODE = not state.PLAYER_HEALTH_MODE
+                    state.save_admin_config()
+                    status_msg = f"Player Health Mode {'ENABLED' if state.PLAYER_HEALTH_MODE else 'OFF'} (1-Hit Kill)."
+                    status_color = WIN_GREEN
+                    status_time = pygame.time.get_ticks()
+
+                elif reset_progress_rect.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("game_over")
+                    state.all_player_data = {"P1": dict(state.DEFAULT_PLAYER_DATA), "P2": dict(state.DEFAULT_PLAYER_DATA)}
+                    state.save_game_progress()
+                    status_msg = "🚨 Reset Game Progress to initial defaults!"
+                    status_color = RED
+                    status_time = pygame.time.get_ticks()
+
+                elif reset_users_rect.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("game_over")
+                    account.reset_all_users()
+                    status_msg = "🚨 Reset User Accounts (Primary admin preserved)!"
+                    status_color = RED
+                    status_time = pygame.time.get_ticks()
+
+                elif back_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    return "ADMIN_PANEL"
+
+        screen.fill(BLACK)
+        draw_stars(screen)
+
+        draw_text("⚙️ PRIVILEGED ADMIN SETTINGS", FONT_LARGE, RED, center_x, 45, screen)
+        draw_text("Global system configurations, default rules, and emergency administration.", FONT_SMALL, LIGHT_GRAY, center_x, 88, screen)
+
+        h1 = dev_console_rect.collidepoint(mouse_pos)
+        dev_on = getattr(state, "DEV_CONSOLE_ALLOWED", True)
+        pygame.draw.rect(screen, (0, 100, 140) if dev_on else (100, 30, 30), dev_console_rect, border_radius=8)
+        if h1:
+            pygame.draw.rect(screen, WHITE, dev_console_rect, 2, border_radius=8)
+        draw_text(f"Developer Console Access: {'ENABLED' if dev_on else 'DISABLED'} (Click to Toggle)", FONT_SMALL, WHITE, dev_console_rect.centerx, dev_console_rect.centery, screen)
+
+        h2 = credits_rect.collidepoint(mouse_pos)
+        cur_c = state.admin_settings.get("default_starting_credits", 0)
+        pygame.draw.rect(screen, (30, 80, 130), credits_rect, border_radius=8)
+        if h2:
+            pygame.draw.rect(screen, WHITE, credits_rect, 2, border_radius=8)
+        draw_text(f"Default Starting Credits: {cur_c:,} Cr (Click to Cycle)", FONT_SMALL, WHITE, credits_rect.centerx, credits_rect.centery, screen)
+
+        h3 = speed_rect.collidepoint(mouse_pos)
+        cur_s = state.GAME_SPEED
+        pygame.draw.rect(screen, (40, 90, 80), speed_rect, border_radius=8)
+        if h3:
+            pygame.draw.rect(screen, WHITE, speed_rect, 2, border_radius=8)
+        draw_text(f"Global Game Speed Multiplier: {cur_s}x (Click to Cycle)", FONT_SMALL, WHITE, speed_rect.centerx, speed_rect.centery, screen)
+
+        h4 = godmode_rect.collidepoint(mouse_pos)
+        god_on = state.ADMIN_GOD_MODE
+        pygame.draw.rect(screen, (0, 140, 60) if god_on else (70, 70, 90), godmode_rect, border_radius=8)
+        if h4:
+            pygame.draw.rect(screen, WHITE, godmode_rect, 2, border_radius=8)
+        draw_text(f"Default Admin God Mode: {'ACTIVE' if god_on else 'OFF'} (Click to Toggle)", FONT_SMALL, WHITE, godmode_rect.centerx, godmode_rect.centery, screen)
+
+        h_health = player_health_rect.collidepoint(mouse_pos)
+        health_on = getattr(state, "PLAYER_HEALTH_MODE", False)
+        pygame.draw.rect(screen, (0, 140, 60) if health_on else (70, 70, 90), player_health_rect, border_radius=8)
+        if h_health:
+            pygame.draw.rect(screen, WHITE, player_health_rect, 2, border_radius=8)
+        draw_text(f"Player Health Mode: {'HP BAR' if health_on else '1-HIT KILL'} (Click to Toggle)", FONT_SMALL, WHITE, player_health_rect.centerx, player_health_rect.centery, screen)
+
+        draw_text("── 🚨 EMERGENCY DATA RESET CONTROLS ──", FONT_SMALL, RED, center_x, reset_progress_rect.top - 18, screen)
+
+        h_rp = reset_progress_rect.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, (160, 40, 40) if h_rp else (110, 20, 20), reset_progress_rect, border_radius=8)
+        draw_text("Reset Progress JSON", FONT_SMALL, WHITE, reset_progress_rect.centerx, reset_progress_rect.centery, screen)
+
+        h_ru = reset_users_rect.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, (160, 40, 40) if h_ru else (110, 20, 20), reset_users_rect, border_radius=8)
+        draw_text("Reset Users JSON", FONT_SMALL, WHITE, reset_users_rect.centerx, reset_users_rect.centery, screen)
+
+        h_back = back_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if h_back else (40, 50, 70), back_btn, border_radius=8)
+        draw_text("⬅ Return to Admin Control Panel", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
+
+        if status_msg and pygame.time.get_ticks() - status_time < 3500:
+            draw_text(status_msg, FONT_SMALL, status_color, center_x, SCREEN_HEIGHT - 110, screen)
+
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))
+
 
         megahack.draw(screen)
         pygame.display.flip()
@@ -1062,6 +1858,8 @@ def show_web_browser_screen(screen, clock):
                     if pygame.Rect(bx+250, by+260, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/shipyard"
                     if pygame.Rect(bx+250, by+330, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/news"
                     if pygame.Rect(bx+250, by+400, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/mods"
+                    if pygame.Rect(bx+250, by+470, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/updates"
+                    if state.all_player_data["P1"].get("browser_v2") and pygame.Rect(bx+250, by+540, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/v2_vault"
                     
                     if current_url != "http://galactic.net/home":
                         history = history[:history_idx+1]
@@ -1098,7 +1896,10 @@ def show_web_browser_screen(screen, clock):
                                     json_data = m.get("json_data")
                                     if fname and (json_str or json_data):
                                         if json_data and not json_str:
-                                            json_str = json.dumps(json_data)
+                                            mod_key = json_data.get("mod_key", fname.replace(".json", ""))
+                                            # Remove mod_key so it doesn't pollute the object
+                                            if "mod_key" in json_data: del json_data["mod_key"]
+                                            json_str = json.dumps({"powerups": {mod_key: json_data}})
                                         mods_dir = os.path.join(BASE_DIR, "mods")
                                         os.makedirs(mods_dir, exist_ok=True)
                                         mod_path = os.path.join(mods_dir, fname)
@@ -1118,10 +1919,30 @@ def show_web_browser_screen(screen, clock):
                     if publish_rect.collidepoint(mouse_pos) and mod_name_input.strip() and mod_desc_input.strip():
                         import random
                         fname = mod_name_input.lower().replace(" ", "_")[:15] + f"_{random.randint(100,999)}.json"
-                        mult = round(random.uniform(1.5, 3.0), 1)
-                        stat = random.choice(["damage_multiplier", "speed_multiplier", "health_multiplier"])
-                        jdata = {"name": mod_name_input, "cost": 0, "from_datapack": True, "player_stats": {stat: mult}}
                         
+                        # Cloud Code Generation Parser (CG)
+                        desc_lower = mod_desc_input.lower()
+                        mod_key = fname.replace(".json", "")
+                        jdata = {
+                            "mod_key": mod_key,
+                            "name": mod_name_input,
+                            "desc": mod_desc_input,
+                            "color": [random.randint(50, 255), random.randint(50, 255), random.randint(50, 255)]
+                        }
+                        
+                        if "speed" in desc_lower or "fast" in desc_lower:
+                            jdata["speed_multiplier"] = 1.5
+                        if "damage" in desc_lower or "fire" in desc_lower or "blaster" in desc_lower:
+                            jdata["fire_rate_multiplier"] = 1.5
+                        if "health" in desc_lower or "heal" in desc_lower or "tank" in desc_lower:
+                            jdata["heal_amount"] = 50
+                            
+                        # If no keywords matched at all, pick a random one
+                        if "speed_multiplier" not in jdata and "fire_rate_multiplier" not in jdata and "heal_amount" not in jdata:
+                            effect = random.choice(["speed_multiplier", "fire_rate_multiplier", "heal_amount"])
+                            val = 1.5 if effect != "heal_amount" else 50
+                            jdata[effect] = val
+                            
                         threading.Thread(target=publish_global_mod, args=({"name": mod_name_input, "fname": fname, "desc": mod_desc_input, "json_data": jdata},), daemon=True).start()
                         
                         mod_name_input = ""
@@ -1134,9 +1955,31 @@ def show_web_browser_screen(screen, clock):
 
                 elif current_url == "http://galactic.net/shipyard":
                     if pygame.Rect(bx+250, by+300, 400, 80).collidepoint(mouse_pos) and state.all_player_data["P1"]["credits"] >= 8000:
-                        state.all_player_data["P1"]["credits"] -= 8000
-                        state.all_player_data["P1"]["owned_ships"].append("shadow_wraith")
+                        if "shadow_wraith" not in state.all_player_data["P1"]["owned_ships"]:
+                            state.all_player_data["P1"]["credits"] -= 8000
+                            state.all_player_data["P1"]["owned_ships"].append("shadow_wraith")
+                            state.save_game_progress()
+                            sound_manager.play_sfx("powerup_collect")
+
+                elif current_url == "http://galactic.net/updates":
+                    dl_v2_btn = pygame.Rect(bx+250, by+300, 400, 80)
+                    if dl_v2_btn.collidepoint(mouse_pos) and not state.all_player_data["P1"].get("browser_v2"):
+                        state.all_player_data["P1"]["browser_v2"] = True
                         state.save_game_progress()
+                        sound_manager.play_sfx("level_up")
+
+                elif current_url == "http://galactic.net/v2_vault":
+                    dl_ship_btn = pygame.Rect(bx+250, by+200, 400, 80)
+                    if dl_ship_btn.collidepoint(mouse_pos) and "v2_phantom" not in state.all_player_data["P1"]["owned_ships"]:
+                        state.all_player_data["P1"]["owned_ships"].append("v2_phantom")
+                        state.save_game_progress()
+                        sound_manager.play_sfx("powerup_collect")
+                        
+                    dl_pwr_btn = pygame.Rect(bx+250, by+320, 400, 80)
+                    if dl_pwr_btn.collidepoint(mouse_pos) and "power_magnet" not in state.all_player_data["P1"]["unlocked_powers"]:
+                        state.all_player_data["P1"]["unlocked_powers"].append("power_magnet")
+                        state.save_game_progress()
+                        sound_manager.play_sfx("powerup_collect")
             
             if event.type == pygame.KEYDOWN:
                 if is_typing_url:
@@ -1209,11 +2052,20 @@ def show_web_browser_screen(screen, clock):
         
         # Page Content
         if current_url == "http://galactic.net/home":
-            draw_text("GALACTIC WEB PORTAL", FONT_LARGE, CYAN, bx + browser_w//2, by + 120, screen)
+            title = "GALACTIC WEB PORTAL v2.0" if state.all_player_data["P1"].get("browser_v2") else "GALACTIC WEB PORTAL"
+            draw_text(title, FONT_LARGE, CYAN, bx + browser_w//2, by + 120, screen, drop_shadow=True)
             link1, link2, link3, link4 = pygame.Rect(bx+250, by+190, 400, 50), pygame.Rect(bx+250, by+260, 400, 50), pygame.Rect(bx+250, by+330, 400, 50), pygame.Rect(bx+250, by+400, 400, 50)
-            for r, t, col in [(link1, "▶ Darknet: MegaHack v7", MAGENTA), (link2, "▶ Black Market Shipyard", ORANGE), (link3, "▶ Galactic News Network", YELLOW), (link4, "▶ Modding Community Hub", (100, 255, 100))]:
+            link5 = pygame.Rect(bx+250, by+470, 400, 50)
+            
+            links = [(link1, "▶ Darknet: MegaHack v7", MAGENTA), (link2, "▶ Black Market Shipyard", ORANGE), (link3, "▶ Galactic News Network", YELLOW), (link4, "▶ Modding Community Hub", (100, 255, 100)), (link5, "▶ System Updates", LIGHT_GRAY)]
+            
+            if state.all_player_data["P1"].get("browser_v2"):
+                link6 = pygame.Rect(bx+250, by+540, 400, 50)
+                links.append((link6, "▶ The Quantum Vault (v2.0 Exclusive)", CYAN))
+                
+            for r, t, col in links:
                 pygame.draw.rect(screen, (50, 50, 80), r, border_radius=8)
-                pygame.draw.rect(screen, (80, 80, 120), r, 2, border_radius=8)
+                pygame.draw.rect(screen, (100, 150, 255) if r.collidepoint(mouse_pos) else (80, 80, 120), r, 2, border_radius=8)
                 draw_text(t, FONT_MEDIUM, col, r.centerx, r.centery, screen)
                 
         elif current_url == "http://darknet.galactic/megahack":
@@ -1288,6 +2140,39 @@ def show_web_browser_screen(screen, clock):
             pygame.draw.rect(screen, (50, 150, 250) if can_publish else (100, 100, 100), publish_rect, border_radius=10)
             draw_text("PUBLISH TO CLOUD", FONT_MEDIUM, WHITE, publish_rect.centerx, publish_rect.centery, screen)
 
+        elif current_url == "http://galactic.net/updates":
+            draw_text("SYSTEM UPDATES & FIRMWARE", FONT_LARGE, LIGHT_GRAY, bx + browser_w//2, by + 120, screen)
+            if state.all_player_data["P1"].get("browser_v2"):
+                draw_text("System is up to date! (v2.0 Installed)", FONT_MEDIUM, WIN_GREEN, bx + browser_w//2, by + 200, screen)
+            else:
+                draw_text("New Update Available: Galactic Browser v2.0", FONT_MEDIUM, YELLOW, bx + browser_w//2, by + 200, screen)
+                dl_v2_btn = pygame.Rect(bx+250, by+300, 400, 80)
+                is_hover = dl_v2_btn.collidepoint(mouse_pos)
+                pygame.draw.rect(screen, BUTTON_HOVER_COLOR if is_hover else BUTTON_COLOR, dl_v2_btn, border_radius=10)
+                pygame.draw.rect(screen, CYAN if is_hover else (120, 140, 180), dl_v2_btn, 2, border_radius=10)
+                draw_text("INSTALL v2.0 UPGRADE - FREE", FONT_MEDIUM, WHITE, dl_v2_btn.centerx, dl_v2_btn.centery, screen)
+
+        elif current_url == "http://galactic.net/v2_vault":
+            draw_text("THE QUANTUM VAULT (v2.0 Exclusive)", FONT_LARGE, CYAN, bx + browser_w//2, by + 100, screen)
+            
+            # V2 Phantom Ship
+            dl_ship_btn = pygame.Rect(bx+250, by+200, 400, 80)
+            owned_ship = "v2_phantom" in state.all_player_data["P1"]["owned_ships"]
+            is_hover_ship = dl_ship_btn.collidepoint(mouse_pos)
+            pygame.draw.rect(screen, BUTTON_DISABLED_COLOR if owned_ship else (BUTTON_HOVER_COLOR if is_hover_ship else BUTTON_COLOR), dl_ship_btn, border_radius=10)
+            pygame.draw.rect(screen, (100, 100, 120) if owned_ship else (CYAN if is_hover_ship else (120, 140, 180)), dl_ship_btn, 2, border_radius=10)
+            msg_ship = "DOWNLOADED" if owned_ship else "DOWNLOAD 'V2 PHANTOM' SHIP"
+            draw_text(msg_ship, FONT_MEDIUM, WHITE, dl_ship_btn.centerx, dl_ship_btn.centery, screen)
+            
+            # Magnetic Field Generator Powerup
+            dl_pwr_btn = pygame.Rect(bx+250, by+320, 400, 80)
+            owned_pwr = "power_magnet" in state.all_player_data["P1"]["unlocked_powers"]
+            is_hover_pwr = dl_pwr_btn.collidepoint(mouse_pos)
+            pygame.draw.rect(screen, BUTTON_DISABLED_COLOR if owned_pwr else (BUTTON_HOVER_COLOR if is_hover_pwr else BUTTON_COLOR), dl_pwr_btn, border_radius=10)
+            pygame.draw.rect(screen, (100, 100, 120) if owned_pwr else (CYAN if is_hover_pwr else (120, 140, 180)), dl_pwr_btn, 2, border_radius=10)
+            msg_pwr = "DOWNLOADED" if owned_pwr else "DOWNLOAD 'MAGNETIC CORE' HACK"
+            draw_text(msg_pwr, FONT_MEDIUM, WHITE, dl_pwr_btn.centerx, dl_pwr_btn.centery, screen)
+
         elif matrix_mode:
             # Overwrite the page area with black
             pygame.draw.rect(screen, (0, 0, 0), (bx, by + 40, browser_w, browser_h - 40), border_bottom_left_radius=8, border_bottom_right_radius=8)
@@ -1314,7 +2199,10 @@ def show_web_browser_screen(screen, clock):
         clock.tick(int(FPS * state.GAME_SPEED))
 
 def show_audio_settings_screen(screen, clock):
-    """Full Audio and Music Settings Control Center."""
+    return show_settings_screen(screen, clock)
+
+def show_settings_screen(screen, clock):
+    """Full Game and Audio Settings Control Center."""
     back_btn = pygame.Rect(SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT - 70, 300, 50)
     
     # Volume control buttons
@@ -1359,10 +2247,14 @@ def show_audio_settings_screen(screen, clock):
             vol_rects[vkey] = (minus_rect, bar_rect, plus_rect)
             y_cursor += 48
             
-        # Mute toggle rects
-        sfx_mute_rect = pygame.Rect(center_x - 270, y_cursor + 6, 170, 36)
-        music_mute_rect = pygame.Rect(center_x - 85, y_cursor + 6, 170, 36)
-        copilot_toggle_rect = pygame.Rect(center_x + 100, y_cursor + 6, 170, 36)
+        # Mute & Feature toggle rects (3 buttons: SFX, Music, Copilot)
+        btn_w = 180
+        gap = 15
+        total_w = 3 * btn_w + 2 * gap
+        start_x = center_x - (total_w // 2)
+        sfx_mute_rect = pygame.Rect(start_x, y_cursor + 6, btn_w, 36)
+        music_mute_rect = pygame.Rect(start_x + (btn_w + gap), y_cursor + 6, btn_w, 36)
+        copilot_toggle_rect = pygame.Rect(start_x + 2 * (btn_w + gap), y_cursor + 6, btn_w, 36)
         y_cursor += 50
         
         # Sound Pack Selector Rect
@@ -1453,8 +2345,8 @@ def show_audio_settings_screen(screen, clock):
         draw_stars(screen)
         
         # Header
-        draw_text("⚙️ GAME & AUDIO SETTINGS", FONT_LARGE, CYAN, center_x, 50, screen)
-        draw_text("Customize audio volumes, choose sound sets, and test sound effects.", FONT_SMALL, LIGHT_GRAY, center_x, 88, screen)
+        draw_text("⚙️ GAME SETTINGS", FONT_LARGE, CYAN, center_x, 50, screen)
+        draw_text("Customize audio volume levels, sound packs, copilot assistant, and sound effects.", FONT_SMALL, LIGHT_GRAY, center_x, 88, screen)
         
         # Draw Volume Sliders
         for idx, vkey in enumerate(vol_types):
@@ -1491,6 +2383,7 @@ def show_audio_settings_screen(screen, clock):
         copilot_color = MOD_ON_COLOR if copilot_enabled else MOD_OFF_COLOR
         pygame.draw.rect(screen, copilot_color, copilot_toggle_rect, border_radius=8)
         draw_text(f"Copilot: {'ON' if copilot_enabled else 'OFF'}", FONT_SMALL, WHITE, copilot_toggle_rect.centerx, copilot_toggle_rect.centery, screen)
+
         
         # Draw Sound Pack Selector Button
         cur_pack = state.audio_settings.get("sound_pack", "classic").title()

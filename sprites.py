@@ -39,6 +39,9 @@ class Player(pygame.sprite.Sprite):
         self.speed_x, self.speed_y = 0, 0
         self.base_speed = self.ship_data.get("speed", 7)
         self.shoot_delay = 200
+        
+        self.max_health = 100
+        self.health = self.max_health
 
         my_unlocked = state.all_player_data.get(f"P{self.player_id}", {}).get("unlocked_powers", [])
         if "power_technic_servo" in my_unlocked and "power_technic_servo" in state.HELPER_TYPES: 
@@ -226,6 +229,13 @@ class Player(pygame.sprite.Sprite):
             else:
                 sound_manager.play_sfx("shield_hit", 0.8)
             return True
+            
+        if getattr(state, "PLAYER_HEALTH_MODE", False):
+            self.health -= 25
+            if self.health > 0:
+                sound_manager.play_sfx("shield_hit", 0.6)
+                return True
+                
         return False
 
 class Bullet(pygame.sprite.Sprite):

@@ -113,6 +113,10 @@ def run_admin_menu() -> None:
     Called from ``main.py`` when the logged‑in user is an admin (checked
     beforehand). The menu runs until the admin chooses to exit.
     """
+    if not getattr(state, "DEV_CONSOLE_ALLOWED", True):
+        print("Admin panel access denied – Developer console is disabled.")
+        return
+
     if not state.current_user or not account.is_admin(state.current_user):
         print("Admin panel access denied – not logged in as admin.")
         return

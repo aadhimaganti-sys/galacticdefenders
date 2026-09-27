@@ -13,16 +13,18 @@ from level_editor import run_level_editor, process_active_hacks
 import ui
 import megahack
 import sound_manager
+import account
 
 pygame.init()
-import moderngl
-import array
+try:
+    import moderngl
+    import array
 
-pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN | pygame.OPENGL | pygame.DOUBLEBUF)
+    pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN | pygame.OPENGL | pygame.DOUBLEBUF)
 
-MGL_CTX = moderngl.create_context(require=310)
-MGL_PROG = MGL_CTX.program(
-    vertex_shader='''
+    MGL_CTX = moderngl.create_context(require=310)
+    MGL_PROG = MGL_CTX.program(
+        vertex_shader='''
 #version 140
 in vec2 in_vert;
 in vec2 in_texcoord;
@@ -32,7 +34,7 @@ void main() {
     v_text = in_texcoord;
 }
 ''',
-    fragment_shader='''
+        fragment_shader='''
 #version 140
 uniform sampler2D Texture;
 in vec2 v_text;
@@ -41,28 +43,35 @@ void main() {
     color = texture(Texture, v_text);
 }
 '''
-)
+    )
 
-MGL_VBO = MGL_CTX.buffer(array.array('f', [
-    # x, y, u, v
-    -1.0,  1.0, 0.0, 0.0,
-     1.0,  1.0, 1.0, 0.0,
-    -1.0, -1.0, 0.0, 1.0,
-     1.0, -1.0, 1.0, 1.0,
-]))
-MGL_VAO = MGL_CTX.simple_vertex_array(MGL_PROG, MGL_VBO, 'in_vert', 'in_texcoord')
-MGL_TEXTURE = MGL_CTX.texture((SCREEN_WIDTH, SCREEN_HEIGHT), 4)
-MGL_TEXTURE.filter = (moderngl.NEAREST, moderngl.NEAREST)
+    MGL_VBO = MGL_CTX.buffer(array.array('f', [
+        # x, y, u, v
+        -1.0,  1.0, 0.0, 0.0,
+         1.0,  1.0, 1.0, 0.0,
+        -1.0, -1.0, 0.0, 1.0,
+         1.0, -1.0, 1.0, 1.0,
+    ]))
+    MGL_VAO = MGL_CTX.simple_vertex_array(MGL_PROG, MGL_VBO, 'in_vert', 'in_texcoord')
+    MGL_TEXTURE = MGL_CTX.texture((SCREEN_WIDTH, SCREEN_HEIGHT), 4)
+    MGL_TEXTURE.filter = (moderngl.NEAREST, moderngl.NEAREST)
 
-SCREEN = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    SCREEN = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 
-_original_flip = pygame.display.flip
-def _moderngl_flip():
-    MGL_TEXTURE.write(pygame.image.tobytes(SCREEN, 'RGBA', False))
-    MGL_TEXTURE.use(0)
-    MGL_VAO.render(moderngl.TRIANGLE_STRIP)
-    _original_flip()
-pygame.display.flip = _moderngl_flip
+    _original_flip = pygame.display.flip
+    def _moderngl_flip():
+        MGL_TEXTURE.write(pygame.image.tobytes(SCREEN, 'RGBA', False))
+        MGL_TEXTURE.use(0)
+        MGL_VAO.render(moderngl.TRIANGLE_STRIP)
+        _original_flip()
+    pygame.display.flip = _moderngl_flip
+
+except ImportError:
+    import array
+    pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+    SCREEN = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    moderngl = None
+    MGL_CTX = None
 # --- 2.2 VIRTUAL CAMERA CANVAS ---
 VIRTUAL_SURFACE = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Galactic Defender - 2.2 Cinematic Engine")
@@ -1036,8 +1045,12 @@ def game_loop(current_mode):
         ui.draw_text(f"SECTOR {state.level}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, 22, VIRTUAL_SURFACE)
         if 1 in players:
             ui.draw_text(f"P1 Score: {players[1].score}", FONT_MEDIUM, PLAYER_COLORS[0], 25, 22, VIRTUAL_SURFACE, align="left")
+            if getattr(state, "PLAYER_HEALTH_MODE", False) and hasattr(players[1], 'health'):
+                ui.draw_text(f"HP: {players[1].health}/{players[1].max_health}", FONT_SMALL, (50, 255, 50), 25, 45, VIRTUAL_SURFACE, align="left")
         if 2 in players:
             ui.draw_text(f"P2 Score: {players[2].score}", FONT_MEDIUM, PLAYER_COLORS[1], SCREEN_WIDTH - 25, 22, VIRTUAL_SURFACE, align="right")
+            if getattr(state, "PLAYER_HEALTH_MODE", False) and hasattr(players[2], 'health'):
+                ui.draw_text(f"HP: {players[2].health}/{players[2].max_health}", FONT_SMALL, (50, 255, 50), SCREEN_WIDTH - 25, 45, VIRTUAL_SURFACE, align="right")
             
         if state.audio_settings.get("enable_copilot", False):
             if copilot_chatter_timer > 0:
@@ -1124,6 +1137,7 @@ def main():
     state.load_game_progress()
     state.load_mod_config()
     state.load_audio_config()
+    state.load_admin_config()
     state.reload_mods()
     sound_manager.SoundManager.get_instance()
     sound_manager.play_music("menu_theme")
@@ -1170,14 +1184,34 @@ def main():
                 ui.show_store_screen(SCREEN, CLOCK, "P2")
             elif action == "SELECT_SHIP_P2": 
                 ui.show_ship_selection_screen(SCREEN, CLOCK, "P2")
-            elif action == "AUDIO_SETTINGS":
-                ui.show_audio_settings_screen(SCREEN, CLOCK)
+            elif action in ["GAME_SETTINGS", "AUDIO_SETTINGS"]:
+                ui.show_settings_screen(SCREEN, CLOCK)
+
             elif action == "MOD_LOADER": 
                 ui.show_mod_loader_screen(SCREEN, CLOCK)
             elif action == "LEVEL_EDITOR": 
                 run_level_editor(SCREEN)
+            elif action == "DEV_CONSOLE":
+                if getattr(state, "DEV_CONSOLE_ALLOWED", True):
+                    sub_action = ui.show_dev_console(SCREEN, CLOCK)
+                    if sub_action == "ADMIN_PANEL":
+                        if getattr(state, "DEV_CONSOLE_ALLOWED", True) and state.current_user and account.is_admin(state.current_user):
+                            res = ui.show_terminal_admin_panel(SCREEN, CLOCK)
+                            if res == "QUIT_PROGRAM":
+                                break
+                        else:
+                            sound_manager.play_sfx("game_over")
+                    elif sub_action == "ACCOUNT_SCREEN":
+                        ui.show_account_screen(SCREEN, CLOCK)
+                    elif sub_action == "QUIT_PROGRAM":
+                        break
             elif action == "ADMIN_PANEL": 
-                ui.show_admin_options(SCREEN, CLOCK)
+                if getattr(state, "DEV_CONSOLE_ALLOWED", True) and state.current_user and account.is_admin(state.current_user):
+                    res = ui.show_terminal_admin_panel(SCREEN, CLOCK)
+                    if res == "QUIT_PROGRAM":
+                        break
+                else:
+                    ui.show_admin_options(SCREEN, CLOCK)
             elif action == "ACCOUNT_SCREEN":
                 ui.show_account_screen(SCREEN, CLOCK)
             elif action == "ENGINE_ROOM":
