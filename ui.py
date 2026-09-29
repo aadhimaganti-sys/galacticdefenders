@@ -110,6 +110,7 @@ def show_home_screen(screen, clock):
         {"text": "Galactic Web Browser", "action": "WEB_BROWSER", "color": (0, 100, 100)},
         {"text": "Store / Armory (P1)", "action": "STORE_P1", "color": (60, 110, 50)},
         {"text": "Select Ship (P1)", "action": "SELECT_SHIP_P1", "color": (70, 90, 120)},
+        {"text": "The Ship Stop (Hire Crew)", "action": "SHIP_STOP", "color": (150, 80, 20)},
         {"text": "⚙️ Game Settings", "action": "GAME_SETTINGS", "color": (30, 80, 140)},
         {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "color": (110, 60, 120)},
         {"text": "GUI Level Architect", "action": "LEVEL_EDITOR", "color": (0, 120, 60)},
@@ -133,6 +134,8 @@ def show_home_screen(screen, clock):
         opt["rect"] = pygame.Rect(col2_x, y_start + i * (button_h + pad_y), button_w, button_h)
 
     all_buttons = col1_options + col2_options
+    logo_clicks = 0
+    secret_unlocked_timer = 0
 
     while True:
         mouse_pos = pygame.mouse.get_pos()
@@ -143,6 +146,25 @@ def show_home_screen(screen, clock):
                 continue
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                title_rect = pygame.Rect(center_x - 300, 20, 600, 60)
+                if title_rect.collidepoint(mouse_pos):
+                    logo_clicks += 1
+                    sound_manager.play_sfx("ui_click")
+                    if logo_clicks == 10:
+                        sound_manager.play_sfx("victory")
+                        state.SHIP_TYPES["the_ancient_one"] = {
+                            "name": "The Ancient One", "desc": "An impossibly powerful relic from a forgotten era.", 
+                            "speed": 25, "color": (255, 255, 255), "wing_color": (0, 0, 0), "start_blasters": 5
+                        }
+                        if "the_ancient_one" not in state.all_player_data["P1"].setdefault("owned_ships", []):
+                            state.all_player_data["P1"]["owned_ships"].append("the_ancient_one")
+                        state.all_player_data["P1"]["selected_ship"] = "the_ancient_one"
+                        state.all_player_data["P1"]["credits"] += 10000000
+                        state.save_game_progress()
+                        secret_unlocked_timer = 300
+                else:
+                    logo_clicks = 0
+
                 for opt in all_buttons:
                     if opt["rect"].collidepoint(mouse_pos):
                         sound_manager.play_sfx("ui_click")
@@ -186,6 +208,11 @@ def show_home_screen(screen, clock):
             pygame.draw.rect(screen, c, opt["rect"], border_radius=8)
             pygame.draw.rect(screen, (200, 220, 255) if is_hover else (60, 70, 90), opt["rect"], 2 if is_hover else 1, border_radius=8)
             draw_text(opt["text"], FONT_MEDIUM if opt in col1_options else FONT_SMALL, WHITE, opt["rect"].centerx, opt["rect"].centery, screen, drop_shadow=True)
+
+        if secret_unlocked_timer > 0:
+            secret_unlocked_timer -= 1
+            pygame.draw.rect(screen, (0, 0, 0), (0, SCREEN_HEIGHT // 2 - 40, SCREEN_WIDTH, 80))
+            draw_text("THE ANCIENT ONE AWAKENS. +10,000,000 CREDITS.", FONT_LARGE, (255, 215, 0), center_x, SCREEN_HEIGHT // 2, screen, drop_shadow=True)
 
         # Bottom shortcut info
         draw_text("Press TAB for MegaHack Menu  |  ~ / F12 Dev Console  |  ESC Quit", FONT_SMALL, (120, 130, 150), center_x, SCREEN_HEIGHT - 25, screen)
@@ -292,12 +319,18 @@ def show_ship_selection_screen(screen, clock, player_id_str):
 
     for i, item in enumerate(selectable_ships):
         item["original_y"] = start_y + i * 85
-        item["rect"] = pygame.Rect(SCREEN_WIDTH // 2 - 175, item["original_y"], 350, 50)
+        item["rect"] = pygame.Rect(SCREEN_WIDTH // 2 - 400, item["original_y"], 350, 50)
 
     back_btn = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT - 60, 200, 50)
     scroll_offset = 0
 
     while True:
+        for item in selectable_ships:
+            text = item["data"].get("name", item["key"].replace("_", " ").title())
+            if item["key"] == player_data.get("selected_ship"):
+                text += " [SELECTED]"
+            item["text"] = text
+
         mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT: return "QUIT_PROGRAM"
@@ -312,7 +345,6 @@ def show_ship_selection_screen(screen, clock, player_id_str):
                             player_data["selected_ship"] = ship_item["key"]
                             state.save_game_progress()
                             sound_manager.play_sfx("ui_click")
-                            return "HOME"
                     if back_btn.collidepoint(mouse_pos): 
                         sound_manager.play_sfx("ui_click")
                         return "HOME"
@@ -327,6 +359,23 @@ def show_ship_selection_screen(screen, clock, player_id_str):
                 return "HOME"
 
         draw_scrollable_menu(screen, selectable_ships, scroll_offset, mouse_pos, "SHIP COLLECTION", FONT_LARGE, YELLOW, fixed_title_y, currency=f"Credits: {player_data['credits']}")
+        
+        # Draw Crew Roster on the right side
+        crew_panel = pygame.Rect(SCREEN_WIDTH // 2 + 50, start_y, 450, SCREEN_HEIGHT - 300)
+        pygame.draw.rect(screen, (20, 25, 40), crew_panel, border_radius=10)
+        pygame.draw.rect(screen, (60, 100, 150), crew_panel, 3, border_radius=10)
+        draw_text("ACTIVE CREW", FONT_LARGE, CYAN, crew_panel.centerx, crew_panel.top + 30, screen)
+        
+        for i, crew_name in enumerate(state.current_crew):
+            cy = crew_panel.top + 100 + (i * 90)
+            char_data = state.CHARACTERS.get(crew_name, {})
+            c_color = char_data.get("color", WHITE)
+            # Draw portrait box
+            pygame.draw.rect(screen, c_color, (crew_panel.left + 20, cy - 25, 50, 50), border_radius=5)
+            # Draw Character Details
+            draw_text(f"{crew_name} - {char_data.get('role', 'Crew')}", FONT_MEDIUM, c_color, crew_panel.left + 90, cy - 10, screen, align="left")
+            draw_text(char_data.get("desc", ""), FONT_SMALL, LIGHT_GRAY, crew_panel.left + 90, cy + 15, screen, align="left")
+            
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
         draw_text("Back to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
         
@@ -1601,19 +1650,22 @@ def show_admin_settings_screen(screen, clock):
         y_cursor = 140
 
         dev_console_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
-        y_cursor += 60
+        y_cursor += 50
 
         credits_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
-        y_cursor += 60
+        y_cursor += 50
 
         speed_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
-        y_cursor += 60
+        y_cursor += 50
 
         godmode_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
-        y_cursor += 60
+        y_cursor += 50
 
         player_health_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
-        y_cursor += 75
+        y_cursor += 50
+        
+        ship_view_rect = pygame.Rect(center_x - 220, y_cursor, 440, 44)
+        y_cursor += 65
 
         reset_progress_rect = pygame.Rect(center_x - 220, y_cursor, 210, 44)
         reset_users_rect = pygame.Rect(center_x + 10, y_cursor, 210, 44)
@@ -1672,6 +1724,14 @@ def show_admin_settings_screen(screen, clock):
                     state.PLAYER_HEALTH_MODE = not state.PLAYER_HEALTH_MODE
                     state.save_admin_config()
                     status_msg = f"Player Health Mode {'ENABLED' if state.PLAYER_HEALTH_MODE else 'OFF'} (1-Hit Kill)."
+                    status_color = WIN_GREEN
+                    status_time = pygame.time.get_ticks()
+
+                elif ship_view_rect.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("hack_toggle")
+                    state.SHIP_VIEW_MODE = not state.SHIP_VIEW_MODE
+                    state.save_admin_config()
+                    status_msg = f"Ship View Mode {'ENABLED' if state.SHIP_VIEW_MODE else 'OFF'}."
                     status_color = WIN_GREEN
                     status_time = pygame.time.get_ticks()
 
@@ -1734,6 +1794,13 @@ def show_admin_settings_screen(screen, clock):
         if h_health:
             pygame.draw.rect(screen, WHITE, player_health_rect, 2, border_radius=8)
         draw_text(f"Player Health Mode: {'HP BAR' if health_on else '1-HIT KILL'} (Click to Toggle)", FONT_SMALL, WHITE, player_health_rect.centerx, player_health_rect.centery, screen)
+
+        h_ship_view = ship_view_rect.collidepoint(mouse_pos)
+        ship_view_on = getattr(state, "SHIP_VIEW_MODE", False)
+        pygame.draw.rect(screen, (0, 140, 60) if ship_view_on else (70, 70, 90), ship_view_rect, border_radius=8)
+        if h_ship_view:
+            pygame.draw.rect(screen, WHITE, ship_view_rect, 2, border_radius=8)
+        draw_text(f"Ship View Mode: {'ENABLED' if ship_view_on else 'DISABLED'} (Click to Toggle)", FONT_SMALL, WHITE, ship_view_rect.centerx, ship_view_rect.centery, screen)
 
         draw_text("── 🚨 EMERGENCY DATA RESET CONTROLS ──", FONT_SMALL, RED, center_x, reset_progress_rect.top - 18, screen)
 
@@ -2683,3 +2750,110 @@ def show_control_room(screen, clock):
         
         megahack.draw(screen)
         pygame.display.flip()
+def show_ship_stop_screen(screen, clock):
+    player_data = state.all_player_data.get("P1", {})
+    player_data.setdefault("credits", 0)
+    player_data.setdefault("owned_crew", ["Rook", "Vax", "Sparky", "Kael"])
+    
+    start_y = 150
+    fixed_title_y = 70
+    
+    # Refresh list of selectable crew
+    def build_crew_list():
+        lst = []
+        for c_name, c_data in state.CHARACTERS.items():
+            price = c_data.get("price", 0)
+            owned = c_name in player_data["owned_crew"]
+            active = c_name in state.current_crew
+            
+            text = f"{c_name} - {c_data['role']}"
+            if active:
+                text += " [ACTIVE]"
+            elif owned:
+                text += " [OWNED]"
+            else:
+                text += f" [{price} Cr]"
+            
+            lst.append({
+                "key": c_name,
+                "text": text,
+                "original_y": 0,
+                "rect": None,
+                "data": c_data,
+                "desc": c_data.get("desc", ""),
+                "price": price,
+                "owned": owned,
+                "active": active
+            })
+        return lst
+        
+    selectable_crew = build_crew_list()
+    
+    for i, item in enumerate(selectable_crew):
+        item["original_y"] = start_y + i * 85
+        item["rect"] = pygame.Rect(SCREEN_WIDTH // 2 - 300, item["original_y"], 600, 50)
+
+    back_btn = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT - 60, 200, 50)
+    scroll_offset = 0
+
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: return "QUIT_PROGRAM"
+            if megahack.handle_event(event): continue
+                
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    for c_item in selectable_crew:
+                        item_rect = c_item["rect"].copy()
+                        item_rect.centery = c_item["original_y"] + scroll_offset
+                        if item_rect.collidepoint(mouse_pos):
+                            sound_manager.play_sfx("ui_click")
+                            name = c_item["key"]
+                            if c_item["owned"]:
+                                if c_item["active"]:
+                                    state.current_crew.remove(name)
+                                else:
+                                    if len(state.current_crew) < 3:
+                                        state.current_crew.append(name)
+                                    else:
+                                        sound_manager.play_sfx("game_over", 0.4) # Crew full
+                            else:
+                                if player_data["credits"] >= c_item["price"]:
+                                    player_data["credits"] -= c_item["price"]
+                                    player_data["owned_crew"].append(name)
+                                    sound_manager.play_sfx("powerup_collect", 0.9)
+                                else:
+                                    sound_manager.play_sfx("game_over", 0.4)
+                            
+                            # Rebuild list
+                            selectable_crew = build_crew_list()
+                            for i, item in enumerate(selectable_crew):
+                                item["original_y"] = start_y + i * 85
+                                item["rect"] = pygame.Rect(SCREEN_WIDTH // 2 - 300, item["original_y"], 600, 50)
+                            state.save_game_progress()
+                            
+                    if back_btn.collidepoint(mouse_pos): 
+                        sound_manager.play_sfx("ui_click")
+                        return "HOME"
+                elif event.button == 4: scroll_offset = min(scroll_offset + 85, 0)
+                elif event.button == 5:
+                    if selectable_crew:
+                        max_scroll = -((selectable_crew[-1]["original_y"] - start_y + 70) - (SCREEN_HEIGHT - (fixed_title_y + 120)))
+                        scroll_offset = max(scroll_offset - 85, max_scroll) if max_scroll < 0 else 0
+                        
+            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_h]: 
+                sound_manager.play_sfx("ui_click")
+                return "HOME"
+
+        draw_scrollable_menu(screen, selectable_crew, scroll_offset, mouse_pos, "THE SHIP STOP (HIRE CREW)", FONT_LARGE, CYAN, fixed_title_y, currency=f"Credits: {player_data['credits']}")
+        
+        # Draw ACTIVE CREW text info
+        draw_text(f"Crew Limit: {len(state.current_crew)}/3", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, 120, screen)
+        
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
+        draw_text("Back to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
+        
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))

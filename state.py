@@ -19,7 +19,21 @@ CAMERA_ZOOM = 1.0
 CAMERA_SHAKE = 0
 CAMERA_ANGLE = 0
 BG_COLOR = (0, 0, 0)
-particle_list = []  # Global list for all shattered fragments and engine trails
+particle_list: list = []  # Global list for all shattered fragments and engine trails
+
+# --- PILOT & CREW DATA ---
+CHARACTERS = {
+    "Rook": {"role": "Copilot", "color": (100, 200, 255), "desc": "Ace pilot with lightning reflexes.", "price": 0},
+    "Vax": {"role": "Tactical", "color": (255, 100, 100), "desc": "Weapons specialist and combat veteran.", "price": 0},
+    "Sparky": {"role": "Engineer", "color": (255, 200, 50), "desc": "Ship mechanic who keeps the core stable.", "price": 0},
+    "Kael": {"role": "Commander", "color": (150, 100, 255), "desc": "Strategic mastermind.", "price": 0},
+    "Nova": {"role": "Navigator", "color": (0, 255, 150), "desc": "Can chart a course through a black hole.", "price": 500},
+    "Jax": {"role": "Gunner", "color": (255, 50, 50), "desc": "Never misses a shot. Likes big explosions.", "price": 800},
+    "Lyra": {"role": "Medic", "color": (255, 150, 200), "desc": "Keeps the crew alive when things go wrong.", "price": 600},
+    "Bex": {"role": "Scavenger", "color": (200, 150, 50), "desc": "Finds spare parts where there are none.", "price": 400},
+    "Zane": {"role": "Shield Operator", "color": (50, 150, 255), "desc": "Master of deflector arrays and barriers.", "price": 1000},
+}
+current_crew = ["Rook", "Vax", "Sparky"]
 
 # --- 2.2 PLATFORMER PHYSICS ---
 GRAVITY = 0.8
@@ -51,8 +65,8 @@ ACTIVE_HACKS["Speedhack x1.0"] = True
 GAME_SPEED = 1.0
 
 # --- Catalogs & Profile System ---
-SHIP_TYPES = {}
-HELPER_TYPES = {}
+SHIP_TYPES: dict = {}
+HELPER_TYPES: dict = {}
 active_mods = []
 
 DEFAULT_PLAYER_DATA = {
@@ -101,13 +115,15 @@ admin_settings = {
     "default_starting_credits": 0,
     "global_game_speed": 1.0,
     "force_god_mode": False,
+    "ship_view_mode": False,
 }
 
 DEV_CONSOLE_ALLOWED = True
 PLAYER_HEALTH_MODE = False
+SHIP_VIEW_MODE = False
 
 def load_admin_config():
-    global admin_settings, DEV_CONSOLE_ALLOWED, GAME_SPEED, ADMIN_GOD_MODE, PLAYER_HEALTH_MODE
+    global admin_settings, DEV_CONSOLE_ALLOWED, GAME_SPEED, ADMIN_GOD_MODE, PLAYER_HEALTH_MODE, SHIP_VIEW_MODE
     try:
         if os.path.exists(ADMIN_CONFIG_FILE):
             with open(ADMIN_CONFIG_FILE, "r") as f:
@@ -117,16 +133,18 @@ def load_admin_config():
                 GAME_SPEED = admin_settings.get("global_game_speed", 1.0)
                 ADMIN_GOD_MODE = admin_settings.get("force_god_mode", False)
                 PLAYER_HEALTH_MODE = admin_settings.get("player_health_mode", False)
+                SHIP_VIEW_MODE = admin_settings.get("ship_view_mode", False)
     except Exception:
         pass
 
 def save_admin_config():
-    global admin_settings, DEV_CONSOLE_ALLOWED, GAME_SPEED, ADMIN_GOD_MODE, PLAYER_HEALTH_MODE
+    global admin_settings, DEV_CONSOLE_ALLOWED, GAME_SPEED, ADMIN_GOD_MODE, PLAYER_HEALTH_MODE, SHIP_VIEW_MODE
     try:
         admin_settings["dev_console_allowed"] = DEV_CONSOLE_ALLOWED
         admin_settings["global_game_speed"] = GAME_SPEED
         admin_settings["force_god_mode"] = ADMIN_GOD_MODE
         admin_settings["player_health_mode"] = PLAYER_HEALTH_MODE
+        admin_settings["ship_view_mode"] = SHIP_VIEW_MODE
         with open(ADMIN_CONFIG_FILE, "w") as f:
             json.dump(admin_settings, f, indent=4)
     except Exception:
@@ -153,7 +171,7 @@ def save_mod_config():
     except Exception: 
         pass
 
-POWERUP_TYPES = {}
+POWERUP_TYPES: dict = {}
 
 def reload_mods():
     global SHIP_TYPES, HELPER_TYPES, POWERUP_TYPES

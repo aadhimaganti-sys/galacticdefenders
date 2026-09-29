@@ -6,6 +6,7 @@ import socket
 
 from settings import *
 import state
+import interior
 import network
 from sprites import Player, Asteroid, Boss, SpinoffDrone, Explosion, PowerUp
 from autopilot import AdvancedAutoPilot
@@ -271,8 +272,9 @@ def spinoff_game_loop():
                 VIRTUAL_SURFACE.blit(s, (int(p[0]) - 3, int(p[1]) - 3))
 
         for sprite in all_sprites:
-            if isinstance(sprite, Player): 
-                sprite.draw(VIRTUAL_SURFACE)
+            if isinstance(sprite, Player):
+                if not getattr(state, "SHIP_VIEW_MODE", False) or getattr(state, "astronaut_near_window", False):
+                    sprite.draw(VIRTUAL_SURFACE)
             else: 
                 VIRTUAL_SURFACE.blit(sprite.image, sprite.rect)
                 
@@ -320,13 +322,13 @@ def spinoff_game_loop():
                     ui.draw_text("Press 'T' to reply", FONT_SMALL, LIGHT_GRAY, box_rect.right - 80, box_rect.bottom - 15, VIRTUAL_SURFACE)
             elif random.randint(1, 500) == 1:
                 copilot_chatter = random.choice([
-                    "Copilot 1: Captain, I'm detecting anomalies!",
-                    "Copilot 2: We must survive this, Captain!",
-                    "Copilot 1: Engines are stable. Ready for your command, Captain.",
-                    "Copilot 2: Focus, Captain! The mission depends on us!",
-                    "Copilot 1: That was a close one! Excellent flying, Captain.",
-                    "Copilot 2: Scanning the rift... something's not right, Captain.",
-                    "Copilot 1: Thrusters at maximum capacity. Hold on, Captain!",
+                    f"{state.current_crew[0]}: Captain, I'm detecting anomalies!",
+                    f"{state.current_crew[1]}: We must survive this, Captain!",
+                    f"{state.current_crew[0]}: Engines are stable. Ready for your command, Captain.",
+                    f"{state.current_crew[1]}: Focus, Captain! The mission depends on us!",
+                    f"{state.current_crew[0]}: That was a close one! Excellent flying, Captain.",
+                    f"{state.current_crew[1]}: Scanning the rift... something's not right, Captain.",
+                    f"{state.current_crew[0]}: Thrusters at maximum capacity. Hold on, Captain!",
                 ])
                 copilot_chatter_timer = 240
                 copilot_box_x = random.randint(20, max(30, SCREEN_WIDTH - 720))
@@ -381,6 +383,8 @@ def spinoff_game_loop():
         offset_y = (SCREEN_HEIGHT - final_surf.get_height()) // 2
         SCREEN.blit(final_surf, (offset_x + shake_x, offset_y + shake_y))
 
+        if getattr(state, "SHIP_VIEW_MODE", False):
+            interior.update_and_draw_interior(SCREEN)
         megahack.draw(SCREEN)
         pygame.display.flip()
         CLOCK.tick(int(FPS * state.GAME_SPEED))
@@ -539,8 +543,9 @@ def ultimate_boss_loop():
                 VIRTUAL_SURFACE.blit(s, (int(p[0]) - 3, int(p[1]) - 3))
 
         for sprite in all_sprites:
-            if isinstance(sprite, Player): 
-                sprite.draw(VIRTUAL_SURFACE)
+            if isinstance(sprite, Player):
+                if not getattr(state, "SHIP_VIEW_MODE", False) or getattr(state, "astronaut_near_window", False):
+                    sprite.draw(VIRTUAL_SURFACE)
             else: 
                 VIRTUAL_SURFACE.blit(sprite.image, sprite.rect)
                 
@@ -579,13 +584,13 @@ def ultimate_boss_loop():
                     ui.draw_text("Press 'T' to reply", FONT_SMALL, LIGHT_GRAY, box_rect.right - 80, box_rect.bottom - 15, VIRTUAL_SURFACE)
             elif random.randint(1, 500) == 1:
                 copilot_chatter = random.choice([
-                    "Copilot 1: Captain, watch your six! The boss is preparing an attack!",
-                    "Copilot 2: We need more firepower, Captain! Focus fire on the core!",
-                    "Copilot 1: Engines are stable. Evasive maneuvers ready, Captain.",
-                    "Copilot 2: Shields taking heavy damage! Be careful, Captain!",
-                    "Copilot 1: That was a close one! Excellent flying, Captain.",
-                    "Copilot 2: Scanning boss weaknesses... keep hitting it, Captain!",
-                    "Copilot 1: Thrusters at maximum capacity. We can't take much more!",
+                    f"{state.current_crew[0]}: Captain, watch your six! The boss is preparing an attack!",
+                    f"{state.current_crew[1]}: We need more firepower, Captain! Focus fire on the core!",
+                    f"{state.current_crew[0]}: Engines are stable. Evasive maneuvers ready, Captain.",
+                    f"{state.current_crew[1]}: Shields taking heavy damage! Be careful, Captain!",
+                    f"{state.current_crew[0]}: That was a close one! Excellent flying, Captain.",
+                    f"{state.current_crew[1]}: Scanning boss weaknesses... keep hitting it, Captain!",
+                    f"{state.current_crew[0]}: Thrusters at maximum capacity. We can't take much more!",
                 ])
                 copilot_chatter_timer = 240
                 copilot_box_x = random.randint(20, max(30, SCREEN_WIDTH - 720))
@@ -640,6 +645,8 @@ def ultimate_boss_loop():
         offset_y = (SCREEN_HEIGHT - final_surf.get_height()) // 2
         SCREEN.blit(final_surf, (offset_x + shake_x, offset_y + shake_y))
 
+        if getattr(state, "SHIP_VIEW_MODE", False):
+            interior.update_and_draw_interior(SCREEN)
         megahack.draw(SCREEN)
         pygame.display.flip()
         CLOCK.tick(int(FPS * state.GAME_SPEED))
@@ -739,6 +746,8 @@ def game_loop(current_mode):
                 else:
                     SCREEN.blit(VIRTUAL_SURFACE, (shake_x, shake_y))
 
+                if getattr(state, "SHIP_VIEW_MODE", False):
+                    interior.update_and_draw_interior(SCREEN)
                 megahack.draw(SCREEN)
                 pygame.display.flip()
                 
@@ -1021,8 +1030,9 @@ def game_loop(current_mode):
                 VIRTUAL_SURFACE.blit(s, (int(p[0]) - 3, int(p[1]) - 3))
 
         for sprite in all_sprites:
-            if isinstance(sprite, Player): 
-                sprite.draw(VIRTUAL_SURFACE)
+            if isinstance(sprite, Player):
+                if not getattr(state, "SHIP_VIEW_MODE", False) or getattr(state, "astronaut_near_window", False):
+                    sprite.draw(VIRTUAL_SURFACE)
             else: 
                 VIRTUAL_SURFACE.blit(sprite.image, sprite.rect)
                 
@@ -1042,6 +1052,9 @@ def game_loop(current_mode):
             pygame.draw.rect(VIRTUAL_SURFACE, (255, 200, 50), (bx, by, bar_w, bar_h), 2, border_radius=4)
             ui.draw_text(f"BOSS HP: {int(pct*100)}%", FONT_SMALL, WHITE, SCREEN_WIDTH // 2, by + bar_h // 2, VIRTUAL_SURFACE)
 
+        if state.ACTIVE_HACKS.get("Auto Pilot", False):
+            AdvancedAutoPilot.draw_hud(VIRTUAL_SURFACE)
+            
         ui.draw_text(f"SECTOR {state.level}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, 22, VIRTUAL_SURFACE)
         if 1 in players:
             ui.draw_text(f"P1 Score: {players[1].score}", FONT_MEDIUM, PLAYER_COLORS[0], 25, 22, VIRTUAL_SURFACE, align="left")
@@ -1066,13 +1079,13 @@ def game_loop(current_mode):
                     ui.draw_text("Press 'T' to reply", FONT_SMALL, LIGHT_GRAY, box_rect.right - 80, box_rect.bottom - 15, VIRTUAL_SURFACE)
             elif random.randint(1, 500) == 1:
                 copilot_chatter = random.choice([
-                    "Copilot 1: Captain, watch your six! Asteroids incoming!",
-                    "Copilot 2: We need more firepower, Captain!",
-                    "Copilot 1: Engines are stable. Ready for your command, Captain.",
-                    "Copilot 2: Shields holding... barely! Be careful, Captain!",
-                    "Copilot 1: That was a close one! Excellent flying, Captain.",
-                    "Copilot 2: Scanning for hostile signatures, Captain.",
-                    "Copilot 1: Thrusters at maximum capacity. We can't take much more!",
+                    f"{state.current_crew[0]}: Captain, watch your six! Asteroids incoming!",
+                    f"{state.current_crew[1]}: We need more firepower, Captain!",
+                    f"{state.current_crew[0]}: Engines are stable. Ready for your command, Captain.",
+                    f"{state.current_crew[1]}: Shields holding... barely! Be careful, Captain!",
+                    f"{state.current_crew[0]}: That was a close one! Excellent flying, Captain.",
+                    f"{state.current_crew[1]}: Scanning for hostile signatures, Captain.",
+                    f"{state.current_crew[0]}: Thrusters at maximum capacity. We can't take much more!",
                 ])
                 copilot_chatter_timer = 240
                 copilot_box_x = random.randint(20, max(30, SCREEN_WIDTH - 720))
@@ -1127,6 +1140,8 @@ def game_loop(current_mode):
         offset_y = (SCREEN_HEIGHT - final_surf.get_height()) // 2
         SCREEN.blit(final_surf, (offset_x + shake_x, offset_y + shake_y))
 
+        if getattr(state, "SHIP_VIEW_MODE", False):
+            interior.update_and_draw_interior(SCREEN)
         megahack.draw(SCREEN)
         pygame.display.flip()
         CLOCK.tick(int(FPS * state.GAME_SPEED))
@@ -1184,6 +1199,8 @@ def main():
                 ui.show_store_screen(SCREEN, CLOCK, "P2")
             elif action == "SELECT_SHIP_P2": 
                 ui.show_ship_selection_screen(SCREEN, CLOCK, "P2")
+            elif action == "SHIP_STOP":
+                ui.show_ship_stop_screen(SCREEN, CLOCK)
             elif action in ["GAME_SETTINGS", "AUDIO_SETTINGS"]:
                 ui.show_settings_screen(SCREEN, CLOCK)
 

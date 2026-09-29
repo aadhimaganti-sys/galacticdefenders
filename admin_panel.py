@@ -131,7 +131,8 @@ def run_admin_menu() -> None:
         print("5) List admin users")
         print("6) Toggle admin rights")
         print("7) Exit admin panel")
-        choice = _prompt("Enter number: ")
+        print("Or enter a console command (e.g. 'data install <url>')")
+        choice = _prompt("Enter number or command: ")
         if choice == "1":
             _list_users()
         elif choice == "2":
@@ -147,8 +148,36 @@ def run_admin_menu() -> None:
         elif choice == "7":
             print("Leaving admin panel.")
             break
+        elif choice.startswith("data install "):
+            url = choice[len("data install "):].strip()
+            print(f"Installing datapack from: {url}")
+            try:
+                import urllib.request
+                import os
+                import json
+                with urllib.request.urlopen(url, timeout=5) as resp:
+                    content = resp.read().decode('utf-8')
+                    # Validate it's JSON
+                    json.loads(content)
+                    
+                    filename = url.split('/')[-1]
+                    if not filename.endswith('.json'):
+                        filename += '.json'
+                        
+                    mods_dir = os.path.join(getattr(state, 'BASE_DIR', '.'), "mods")
+                    os.makedirs(mods_dir, exist_ok=True)
+                    
+                    filepath = os.path.join(mods_dir, filename)
+                    with open(filepath, 'w') as f:
+                        f.write(content)
+                        
+                    print(f"Datapack successfully installed to {filepath}!")
+                    
+            except Exception as e:
+                print(f"Failed to install datapack: {e}")
+                
         else:
-            print("Invalid choice – try again.")
+            print("Invalid choice or command – try again.")
         input("Press Enter to continue...")
 
 

@@ -5,24 +5,7 @@
     "admin": {
       "admin": true,
       "password": "pw",
-      "player_data": {
-        "coins": 0,
-        "credits": 0,
-        "has_downloaded_cheat_menu": false,
-        "has_subscription": false,
-        "owned_ships": [
-          "default_jet"
-        ],
-        "selected_ship": "default_jet",
-        "unlocked_powers": [
-          "power_autoshield",
-          "power_modloader"
-        ],
-        "upgrades": {
-          "blaster_level": 1,
-          "max_health": 1
-        }
-      }
+      "player_data": {}
     }
   }
 }

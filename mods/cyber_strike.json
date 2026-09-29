@@ -1,0 +1,40 @@
+{
+    "name": "Cyber Strike Pack",
+    "ships": {
+        "cyber_strike_x": {
+            "name": "Cyber Strike X",
+            "desc": "Ultra-light experimental interceptor built for high-speed plasma assaults.",
+            "max_health": 250,
+            "speed": 18,
+            "base_speed": 18,
+            "shoot_delay": 55,
+            "start_blasters": 4,
+            "color": [
+                0,
+                255,
+                200
+            ],
+            "wing_color": [
+                255,
+                0,
+                150
+            ],
+            "cost": 0,
+            "unlocked_by_default": true
+        }
+    },
+    "helpers": {
+        "plasma_drone": {
+            "name": "Plasma Interceptor Drone",
+            "desc": "Automated plasma defense orb.",
+            "cost": 0,
+            "shoot_delay": 120,
+            "color": [
+                0,
+                255,
+                200
+            ],
+            "unlocked_by_default": true
+        }
+    }
+}
