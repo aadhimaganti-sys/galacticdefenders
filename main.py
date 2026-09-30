@@ -17,10 +17,19 @@ import sound_manager
 import account
 
 try:
-    with open(os.path.join(BASE_DIR, "assets", "chatter.json"), "r") as f:
+    with open(os.path.join(BUNDLE_DIR, "assets", "chatter.json"), "r") as f:
         CREW_CHATTER_LIST = json.load(f)
 except Exception:
     CREW_CHATTER_LIST = ["Captain, watch your six!"]
+
+# Copy bundled mods to USER_DIR if frozen
+if getattr(sys, "frozen", False):
+    import shutil
+    bundle_mods = os.path.join(BUNDLE_DIR, "mods")
+    user_mods = os.path.join(USER_DIR, "mods")
+    if os.path.exists(bundle_mods):
+        if not os.path.exists(user_mods):
+            shutil.copytree(bundle_mods, user_mods)
 
 pygame.init()
 try:

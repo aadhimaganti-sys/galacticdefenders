@@ -1,0 +1,75 @@
+{
+    "ships": {
+        "virus": {
+            "name": "Virus",
+            "desc": "Bio-digital corruptor craft. Flashes with radioactive neon code and moves at extreme hyper-speed.",
+            "max_health": 200,
+            "speed": 20,
+            "base_speed": 20,
+            "shoot_delay": 70,
+            "start_blasters": 3,
+            "color": [0, 255, 120],
+            "wing_color": [180, 0, 255],
+            "cost": 100,
+            "unlocked_by_default": false
+        },
+        "cyber_phantom": {
+            "name": "Cyber Phantom",
+            "desc": "Sub-atomic data stream vessel. Blistering supersonic speed with quad particle blasters.",
+            "max_health": 150,
+            "speed": 24,
+            "base_speed": 24,
+            "shoot_delay": 60,
+            "start_blasters": 4,
+            "color": [0, 220, 255],
+            "wing_color": [20, 30, 60],
+            "cost": 100,
+            "unlocked_by_default": false
+        },
+        "quantum_glitch": {
+            "name": "Quantum Glitch",
+            "desc": "Unstable anomaly fighter that tears through space at ultra light-speed with max firepower.",
+            "max_health": 120,
+            "speed": 28,
+            "base_speed": 28,
+            "shoot_delay": 50,
+            "start_blasters": 5,
+            "color": [255, 0, 100],
+            "wing_color": [255, 220, 0],
+            "cost": 100,
+            "unlocked_by_default": false
+        },
+        "malware_titan": {
+            "name": "Malware Titan",
+            "desc": "Heavy armored trojan dreadnought equipped with sustained rapid-pulse suppressors.",
+            "max_health": 450,
+            "speed": 16,
+            "base_speed": 16,
+            "shoot_delay": 80,
+            "start_blasters": 4,
+            "color": [160, 0, 255],
+            "wing_color": [80, 0, 140],
+            "cost": 100,
+            "unlocked_by_default": false
+        }
+    },
+    "helpers": {
+        "virus_drone": {
+            "name": "Virus Interceptor Drone",
+            "desc": "Fast orbital cyber-drone that fires bursts of green laser disruption.",
+            "cost": 1,
+            "shoot_delay": 100,
+            "color": [0, 255, 120],
+            "unlocked_by_default": false
+        }
+    },
+    "powerups": {
+        "hyper_overclock": {
+            "name": "Hyper Overclock",
+            "desc": "Temporarily supercharges thruster speed by 2x and doubles blaster fire rate.",
+            "color": [0, 255, 180],
+            "speed_multiplier": 2.0,
+            "fire_rate_multiplier": 2.5
+        }
+    }
+}

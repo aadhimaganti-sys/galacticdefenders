@@ -55,19 +55,26 @@ FONT_SMALL = pygame.font.SysFont("Arial", 20)
 
 # --- Paths ---
 if getattr(sys, "frozen", False):
-    BASE_DIR = os.path.expanduser("~/Documents/GalacticDefender")
-    if not os.path.exists(BASE_DIR):
-        os.makedirs(BASE_DIR)
+    USER_DIR = os.path.expanduser("~/Documents/GalacticDefender")
+    if not os.path.exists(USER_DIR):
+        os.makedirs(USER_DIR)
+    BUNDLE_DIR = sys._MEIPASS if hasattr(sys, "_MEIPASS") else os.path.dirname(sys.executable)
 else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    USER_DIR = os.path.dirname(os.path.abspath(__file__))
+    BUNDLE_DIR = USER_DIR
 
-PROGRESS_FILE = os.path.join(BASE_DIR, "galactic_defender_progress.json")
-MOD_CONFIG_FILE = os.path.join(BASE_DIR, "mod_config.json")
-ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+BASE_DIR = USER_DIR
+
+PROGRESS_FILE = os.path.join(USER_DIR, "galactic_defender_progress.json")
+MOD_CONFIG_FILE = os.path.join(USER_DIR, "mod_config.json")
+AUDIO_CONFIG_FILE = os.path.join(USER_DIR, "audio_config.json")
+ADMIN_CONFIG_FILE = os.path.join(USER_DIR, "admin_config.json")
+USERS_FILE = os.path.join(USER_DIR, "users.json")
+
+ASSETS_DIR = os.path.join(BUNDLE_DIR, "assets")
 SOUNDS_DIR = os.path.join(ASSETS_DIR, "sounds")
 MUSIC_DIR = os.path.join(ASSETS_DIR, "music")
-AUDIO_CONFIG_FILE = os.path.join(BASE_DIR, "audio_config.json")
-ADMIN_CONFIG_FILE = os.path.join(BASE_DIR, "admin_config.json")
+
 
 # --- Base Catalogs ---
 BASE_SHIP_TYPES = {
