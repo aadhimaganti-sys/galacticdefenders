@@ -2814,7 +2814,7 @@ def show_ship_stop_screen(screen, clock):
                                 if c_item["active"]:
                                     state.current_crew.remove(name)
                                 else:
-                                    if len(state.current_crew) < 3:
+                                    if len(state.current_crew) < 5:
                                         state.current_crew.append(name)
                                     else:
                                         sound_manager.play_sfx("game_over", 0.4) # Crew full
