@@ -13,6 +13,7 @@ from autopilot import AdvancedAutoPilot
 from level_editor import run_level_editor, process_active_hacks
 import ui
 import megahack
+import lan_integration
 import sound_manager
 import account
 
@@ -138,6 +139,8 @@ def spinoff_game_loop():
             if event.type == pygame.QUIT: 
                 return "QUIT_PROGRAM"
             if megahack.handle_event(event): 
+                continue
+            if lan_integration.handle_event(event): 
                 continue
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
@@ -440,6 +443,8 @@ def ultimate_boss_loop():
                 return "QUIT_PROGRAM"
             if megahack.handle_event(event): 
                 continue
+            if lan_integration.handle_event(event): 
+                continue
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3: 
                 state.ACTIVE_HACKS["Auto Pilot"] = not state.ACTIVE_HACKS.get("Auto Pilot", False)
@@ -687,7 +692,10 @@ def game_loop(current_mode):
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT: return "QUIT_PROGRAM"
-                if megahack.handle_event(event): continue
+                if megahack.handle_event(event): 
+                    continue
+                if lan_integration.handle_event(event): 
+                    continue
 
             keys = pygame.key.get_pressed()
             my_keys = {
@@ -862,6 +870,8 @@ def game_loop(current_mode):
             if event.type == pygame.QUIT: 
                 return "QUIT_PROGRAM"
             if megahack.handle_event(event): 
+                continue
+            if lan_integration.handle_event(event): 
                 continue
             
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3: 

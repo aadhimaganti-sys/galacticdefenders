@@ -112,10 +112,13 @@ def show_home_screen(screen, clock):
         {"text": "Select Ship (P1)", "action": "SELECT_SHIP_P1", "color": (70, 90, 120)},
         {"text": "The Ship Stop (Hire Crew)", "action": "SHIP_STOP", "color": (150, 80, 20)},
         {"text": "⚙️ Game Settings", "action": "GAME_SETTINGS", "color": (30, 80, 140)},
-        {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "color": (110, 60, 120)},
         {"text": "GUI Level Architect", "action": "LEVEL_EDITOR", "color": (0, 120, 60)},
         {"text": "Quit Game", "action": "QUIT_PROGRAM", "color": (120, 30, 30)},
     ]
+
+    has_loader = "power_modloader" in state.all_player_data["P1"].get("unlocked_powers", [])
+    if has_loader:
+        col2_options.insert(-2, {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "color": (110, 60, 120)})
 
     button_w = 340
     button_h = 34

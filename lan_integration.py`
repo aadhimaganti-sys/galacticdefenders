@@ -1,0 +1,189 @@
+import pygame
+import socket
+import json
+import threading
+import time
+from settings import *
+import state
+
+# --- Networking Config ---
+MASTER_HOST = '127.0.0.1'
+MASTER_PORT = 5000
+
+class LANIntegration:
+    def __init__(self):
+        self.mode = "IDLE" # IDLE, BROWSING, CONNECTED
+        self.servers = []
+        self.selected_server_idx = 0
+        self.socket = None
+        self.player_id = None
+        self.remote_players = {} # {pid: {name, x, y, guild}}
+        self.chat_messages = []
+        self.guild_input = ""
+        self.is_typing_guild = False
+        
+        # Networking thread
+        self.running = True
+        self.net_thread = None
+
+    def fetch_servers(self):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(2)
+                s.connect((MASTER_HOST, MASTER_PORT))
+                s.sendall(json.dumps({"type": "LIST"}).encode('utf-8'))
+                data = s.recv(4096).decode('utf-8')
+                res = json.loads(data)
+                self.servers = res.get("servers", [])
+        except Exception as e:
+            print(f"[LAN] Error fetching servers: {e}")
+            self.servers = []
+
+    def connect_to_server(self, server_info):
+        try:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.connect((server_info['ip'], server_info['port']))
+            
+            # Use a default name or from state if available
+            name = "Pilot_" + str(int(time.time()))[-4:]
+            join_msg = json.dumps({"type": "JOIN", "name": name})
+            self.socket.sendall(join_msg.encode('utf-8'))
+            
+            self.mode = "CONNECTED"
+            # Start listener thread
+            self.net_thread = threading.Thread(target=self._listen, daemon=True)
+            self.net_thread.start()
+        except Exception as e:
+            print(f"[LAN] Connection failed: {e}")
+            self.mode = "BROWSING"
+
+    def _listen(self):
+        while self.running and self.socket:
+            try:
+                data = self.socket.recv(4096).decode('utf-8')
+                if not data: break
+                msg = json.loads(data)
+                
+                if msg.get("type") == "WELCOME":
+                    self.player_id = msg.get("id")
+                elif msg.get("type") == "STATE":
+                    self.remote_players = msg.get("players", {})
+                elif msg.get("type") == "CHAT":
+                    self.chat_messages.append(f"{msg.get('sender')} [{msg.get('guild')}]: {msg.get('text')}")
+                    if len(self.chat_messages) > 10: self.chat_messages.pop(0)
+            except Exception:
+                break
+        self.mode = "BROWSING"
+
+    def send_move(self, dx, dy):
+        if self.socket:
+            try:
+                self.socket.sendall(json.dumps({"type": "MOVE", "dx": dx, "dy": dy}).encode('utf-8'))
+            except: pass
+
+    def send_guild(self, guild_name):
+        if self.socket:
+            try:
+                self.socket.sendall(json.dumps({"type": "GUILD_JOIN", "guild": guild_name}).encode('utf-8'))
+            except: pass
+
+    def send_chat(self, text):
+        if self.socket:
+            try:
+                self.socket.sendall(json.dumps({"type": "CHAT", "text": text}).encode('utf-8'))
+            except: pass
+
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
+            if self.mode == "IDLE":
+                self.fetch_servers()
+                self.mode = "BROWSING"
+            elif self.mode == "BROWSING":
+                self.mode = "IDLE"
+            return True
+
+        if self.mode == "BROWSING":
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = pygame.mouse.get_pos()
+                # Simple list check
+                for i in range(len(self.servers)):
+                    rect = pygame.Rect(SCREEN_WIDTH//2 - 200, 200 + i*40, 400, 35)
+                    if rect.collidepoint(mouse_pos):
+                        self.connect_to_server(self.servers[i])
+                        return True
+            return True
+
+        if self.mode == "CONNECTED":
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_g:
+                    self.is_typing_guild = True
+                    return True
+                if self.is_typing_guild:
+                    if event.key == pygame.K_RETURN:
+                        self.send_guild(self.guild_input)
+                        self.guild_input = ""
+                        self.is_typing_guild = False
+                        return True
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.guild_input = self.guild_input[:-1]
+                        return True
+                    elif event.unicode.isprintable():
+                        self.guild_input += event.unicode
+                        return True
+            return False
+        return False
+
+    def draw(self, screen):
+        if self.mode == "IDLE": return
+
+        # Background overlay
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        screen.blit(overlay, (0, 0))
+
+        if self.mode == "BROWSING":
+            # Server Browser
+            font_title = pygame.font.SysFont("Arial", 40, bold=True)
+            font_server = pygame.font.SysFont("Arial", 20)
+            
+            title = font_title.render("GALACTIC SERVER BROWSER", True, JET_BLUE)
+            screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, 100))
+            
+            for i, s in enumerate(self.servers):
+                color = WHITE if i != self.selected_server_idx else YELLOW
+                txt = font_server.render(f"{s['name']} - {s['ip']}:{s['port']}", True, color)
+                rect = pygame.Rect(SCREEN_WIDTH//2 - 200, 200 + i*40, 400, 35)
+                pygame.draw.rect(screen, (50, 50, 80), rect, border_radius=5)
+                screen.blit(txt, (rect.x + 10, rect.y + 5))
+            
+            instr = font_server.render("Click a server to join | Press 'L' to go back", True, LIGHT_GRAY)
+            screen.blit(instr, (SCREEN_WIDTH//2 - instr.get_width()//2, SCREEN_HEIGHT - 100))
+
+        elif self.mode == "CONNECTED":
+            # HUD for LAN
+            font_small = pygame.font.SysFont("Arial", 18)
+            
+            # Players List
+            pygame.draw.rect(screen, (20, 20, 40, 150), (10, 10, 250, 300), border_radius=10)
+            ui_text = font_small.render("ACTIVE PILOTS:", True, JET_BLUE)
+            screen.blit(ui_text, (20, 20))
+            
+            for i, (pid, p) in enumerate(self.remote_players.items()):
+                txt = font_small.render(f"{p['name']} [{p['guild']}]", True, WHITE)
+                screen.blit(txt, (20, 50 + i*25))
+            
+            # Chat
+            for i, msg in enumerate(self.chat_messages):
+                txt = font_small.render(msg, True, LIGHT_GRAY)
+                screen.blit(txt, (SCREEN_WIDTH - 310, SCREEN_HEIGHT - 200 + i*20))
+
+            if self.is_typing_guild:
+                box = pygame.Rect(SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2, 200, 40)
+                pygame.draw.rect(screen, BLACK, box, border_radius=5)
+                pygame.draw.rect(screen, JET_BLUE, box, 2, border_radius=5)
+                txt = font_small.render(f"Guild: {self.guild_input}_", True, WHITE)
+                screen.blit(txt, (box.x + 10, box.y + 10))
+
+lan_system = LANIntegration()
+def handle_event(event): return lan_system.handle_event(event)
+def draw(screen): lan_system.draw(screen)
