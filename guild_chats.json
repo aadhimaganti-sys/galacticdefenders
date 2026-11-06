@@ -1,0 +1,19 @@
+{
+    "SOLAR": [
+        {
+            "username": "admin",
+            "message": "hi",
+            "timestamp": 0
+        },
+        {
+            "username": "admin",
+            "message": "how are you ",
+            "timestamp": 1794002511.558736
+        },
+        {
+            "username": "admin",
+            "message": "is anyone there",
+            "timestamp": 1794002516.5884752
+        }
+    ]
+}

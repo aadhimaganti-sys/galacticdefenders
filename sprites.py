@@ -106,34 +106,34 @@ class Player(pygame.sprite.Sprite):
         self.flame_flicker = random.randint(-4, 4)
         self._update_appearance()
 
-        # Keyboard Lock if Auto Pilot is steering
-        if not state.ACTIVE_HACKS.get("Auto Pilot", False):
-            keys = pygame.key.get_pressed()
-            
-            # --- 2.2 PLATFORMER MODE PHYSICS ---
-            if state.ACTIVE_HACKS.get("Toggle Platformer", False):
-                self.speed_x = self.base_speed if keys[pygame.K_d] else -self.base_speed if keys[pygame.K_a] else 0
-                self.speed_y += state.GRAVITY 
-                if keys[pygame.K_w] and self.rect.bottom >= SCREEN_HEIGHT - 30:
-                    self.speed_y = state.JUMP_POWER
-            else:
+        # Handle Speed Reset
+        if not state.ACTIVE_HACKS.get("Toggle Platformer", False):
+            # Only reset speed if NOT currently being steered by Auto Pilot (P1)
+            if not (state.ACTIVE_HACKS.get("Auto Pilot", False) and self.player_id == 1):
                 self.speed_x, self.speed_y = 0, 0
-                if self.is_network_client:
-                    if self.network_keys.get("l"): self.speed_x = -self.base_speed
-                    if self.network_keys.get("r"): self.speed_x = self.base_speed
-                    if self.network_keys.get("u"): self.speed_y = -self.base_speed
-                    if self.network_keys.get("d"): self.speed_y = self.base_speed
-                elif not state.CHEAT_MENU_VISIBLE:
-                    if self.player_id == 1:
-                        if keys[pygame.K_a]: self.speed_x = -self.base_speed
-                        if keys[pygame.K_d]: self.speed_x = self.base_speed
-                        if keys[pygame.K_w]: self.speed_y = -self.base_speed
-                        if keys[pygame.K_s]: self.speed_y = self.base_speed
-                    elif self.player_id == 2:
-                        if keys[pygame.K_LEFT]: self.speed_x = -self.base_speed
-                        if keys[pygame.K_RIGHT]: self.speed_x = self.base_speed
-                        if keys[pygame.K_UP]: self.speed_y = -self.base_speed
-                        if keys[pygame.K_DOWN]: self.speed_y = self.base_speed
+
+        # Handle Movement
+        if self.is_network_client:
+            # Network clients are NEVER blocked by Auto Pilot hack
+            if self.network_keys.get("l"): self.speed_x = -self.base_speed
+            if self.network_keys.get("r"): self.speed_x = self.base_speed
+            if self.network_keys.get("u"): self.speed_y = -self.base_speed
+            if self.network_keys.get("d"): self.speed_y = self.base_speed
+        else:
+            # Local Player movement
+            # Block only P1 if Auto Pilot is active
+            if not (self.player_id == 1 and state.ACTIVE_HACKS.get("Auto Pilot", False)):
+                keys = pygame.key.get_pressed()
+                if self.player_id == 1:
+                    if keys[pygame.K_a]: self.speed_x = -self.base_speed
+                    if keys[pygame.K_d]: self.speed_x = self.base_speed
+                    if keys[pygame.K_w]: self.speed_y = -self.base_speed
+                    if keys[pygame.K_s]: self.speed_y = self.base_speed
+                elif self.player_id == 2:
+                    if keys[pygame.K_LEFT]: self.speed_x = -self.base_speed
+                    if keys[pygame.K_RIGHT]: self.speed_x = self.base_speed
+                    if keys[pygame.K_UP]: self.speed_y = -self.base_speed
+                    if keys[pygame.K_DOWN]: self.speed_y = self.base_speed
 
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
@@ -189,7 +189,8 @@ class Player(pygame.sprite.Sprite):
             }.get(self.num_blasters, [0])
             
             for offset in offsets:
-                b = Bullet(self.rect.centerx + offset, self.rect.top, self.player_id)
+                dmg = 10 * getattr(self, "damage_mult", 1.0)
+                b = Bullet(self.rect.centerx + offset, self.rect.top, self.player_id, damage=int(dmg))
                 all_sprites_group.add(b)
                 bullet_group.add(b)
 
@@ -202,6 +203,22 @@ class Player(pygame.sprite.Sprite):
 
     def add_score(self, points):
         self.score += points
+        
+        # Pilot XP System
+        user = state.current_user if state.current_user else "Guest"
+        p_data = state.all_player_data.get(user, {})
+        xp_gain = points // 10
+        p_data["pilot_xp"] = p_data.get("pilot_xp", 0) + xp_gain
+        
+        # Level up threshold: level * 1000 XP
+        current_lvl = p_data.get("pilot_level", 1)
+        if p_data["pilot_xp"] >= current_lvl * 1000:
+            p_data["pilot_level"] = current_lvl + 1
+            p_data["pilot_xp"] -= current_lvl * 1000
+            p_data["stat_points"] = p_data.get("stat_points", 0) + 1
+            state.save_game_progress()
+            # We can't easily trigger a UI popup from here, but we'll save the points.
+        
         while self.score >= self.next_powerup_trigger_score:
             self.num_blasters += 1
             self._update_appearance()
@@ -239,7 +256,7 @@ class Player(pygame.sprite.Sprite):
         return False
 
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y, owner_id):
+    def __init__(self, x, y, owner_id, damage=10):
         super().__init__()
         self.owner_id = owner_id
         self.image = pygame.Surface([12, 24], pygame.SRCALPHA)
@@ -247,6 +264,7 @@ class Bullet(pygame.sprite.Sprite):
         pygame.draw.ellipse(self.image, BULLET_YELLOW, [3, 4, 6, 16])
         self.rect = self.image.get_rect(centerx=x, bottom=y)
         self.speed_y = -15
+        self.damage = damage
 
     def update(self):
         self.rect.y += self.speed_y
@@ -287,11 +305,26 @@ class Asteroid(pygame.sprite.Sprite):
             self.rect.x = random.randint(0, SCREEN_WIDTH - self.size)
             self.rect.y = random.randint(-150, -50)
 
+class VoidAsteroid(Asteroid):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.is_void = True
+        self.image.fill((50, 0, 100), special_flags=pygame.BLEND_RGB_ADD)
+
+DRONE_TYPES = {
+    "STANDARD": {"hp": 1, "speed": 2, "color": CYAN},
+    "INTERCEPTOR": {"hp": 1, "speed": 5, "color": (200, 255, 100)},
+    "TANKER": {"hp": 5, "speed": 1, "color": (150, 50, 50)},
+}
+
 class SpinoffDrone(pygame.sprite.Sprite):
     def __init__(self, *groups):
         super().__init__(*groups)
+        self.drone_type = random.choice(list(DRONE_TYPES.keys()))
+        self.type_data = DRONE_TYPES[self.drone_type]
+        self.health = self.type_data["hp"]
         self.image = pygame.Surface([40, 40], pygame.SRCALPHA)
-        pygame.draw.polygon(self.image, CYAN, [(20, 40), (0, 0), (40, 0)])
+        pygame.draw.polygon(self.image, self.type_data["color"], [(20, 40), (0, 0), (40, 0)])
         pygame.draw.polygon(self.image, WHITE, [(20, 40), (0, 0), (40, 0)], 2)
         
         self.rect = self.image.get_rect(x=random.randint(50, SCREEN_WIDTH - 50), y=random.randint(-100, -50))
@@ -302,8 +335,8 @@ class SpinoffDrone(pygame.sprite.Sprite):
     def update(self):
         if state.ACTIVE_HACKS.get("Freeze Time", False): 
             return
-        self.rect.y += self.speed_y
-        self.rect.x += self.speed_x
+        self.rect.x += self.speed_x * (self.type_data["speed"] / 2)
+        self.rect.y += self.speed_y * (self.type_data["speed"] / 2)
         if self.rect.left < 0 or self.rect.right > SCREEN_WIDTH: 
             self.speed_x *= -1
         if self.rect.top > SCREEN_HEIGHT: 

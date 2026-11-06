@@ -1,10 +1,12 @@
 import socket
 import pygame
+import json
 from settings import *
 import state
 
 NETWORK_PORT = 5555
-CLOUD_SERVER_IP = "127.0.0.1"  
+CLOUD_MASTER_IP = "127.0.0.1"
+CLOUD_MASTER_PORT = 5000
 GLOBAL_LOBBY_CODE = "SECRET_BASE_1"
 
 udp_sock = None
@@ -122,3 +124,25 @@ def join_global_cloud(screen, clock):
                     input_address += event.unicode
                     
         clock.tick(int(FPS * state.GAME_SPEED))
+
+def register_server(server_name, ip, port):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(2)
+            s.connect((CLOUD_MASTER_IP, CLOUD_MASTER_PORT))
+            s.sendall(json.dumps({"type": "REGISTER", "name": server_name, "ip": ip, "port": port}).encode('utf-8'))
+            return True
+    except Exception:
+        return False
+
+def fetch_global_servers():
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(2)
+            s.connect((CLOUD_MASTER_IP, CLOUD_MASTER_PORT))
+            s.sendall(json.dumps({"type": "LIST"}).encode('utf-8'))
+            data = s.recv(4096).decode('utf-8')
+            res = json.loads(data)
+            return res.get("servers", [])
+    except Exception:
+        return []

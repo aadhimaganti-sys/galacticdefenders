@@ -7,8 +7,7 @@ from settings import *
 
 # --- Gameplay State ---
 level = 1
-score_p1 = 0
-score_p2 = 0
+
 win_status = False
 winning_player = 0
 game_state = "HOME"
@@ -78,6 +77,9 @@ DEFAULT_PLAYER_DATA = {
     "upgrades": {"blaster_level": 1, "max_health": 1},
     "unlocked_powers": ["power_autoshield"], 
     "has_downloaded_cheat_menu": False,
+    "pilot_level": 1,
+    "pilot_xp": 0,
+    "stat_points": 0,
 }
 
 # --- General & Audio Settings (Player Preferences) ---
@@ -151,7 +153,7 @@ def save_admin_config():
         pass
 
 
-all_player_data = {"P1": dict(DEFAULT_PLAYER_DATA), "P2": dict(DEFAULT_PLAYER_DATA)}
+all_player_data = {}
 
 def load_mod_config():
     global active_mods
@@ -205,9 +207,10 @@ def reload_mods():
                                 d["from_datapack"] = True
                                 SHIP_TYPES[k] = d
                                 if d.get("unlocked_by_default", False) or d.get("cost", 0) == 0:
-                                    for p in ["P1", "P2"]:
-                                        if p in all_player_data and k not in all_player_data[p].get("owned_ships", []):
-                                            all_player_data[p].setdefault("owned_ships", ["default_jet"]).append(k)
+                                    user = current_user if current_user else "Guest"
+                                    if user not in all_player_data: all_player_data[user] = dict(DEFAULT_PLAYER_DATA)
+                                    if k not in all_player_data[user].get("owned_ships", []):
+                                        all_player_data[user].setdefault("owned_ships", ["default_jet"]).append(k)
                         if "helpers" in ext:
                             for k, d in ext["helpers"].items():
                                 d["name"] = d.get("name", k.replace("_", " ").title())
@@ -216,9 +219,10 @@ def reload_mods():
                                 d["from_datapack"] = True
                                 HELPER_TYPES[k] = d
                                 if d.get("unlocked_by_default", False) or d.get("cost", 0) == 0:
-                                    for p in ["P1", "P2"]:
-                                        if p in all_player_data and k not in all_player_data[p].get("unlocked_powers", []):
-                                            all_player_data[p].setdefault("unlocked_powers", ["power_autoshield"]).append(k)
+                                    user = current_user if current_user else "Guest"
+                                    if user not in all_player_data: all_player_data[user] = dict(DEFAULT_PLAYER_DATA)
+                                    if k not in all_player_data[user].get("unlocked_powers", []):
+                                        all_player_data[user].setdefault("unlocked_powers", ["power_autoshield"]).append(k)
                         if "powerups" in ext:
                             for k, d in ext["powerups"].items():
                                 d["name"] = d.get("name", k.replace("_", " ").title())
@@ -229,7 +233,6 @@ def reload_mods():
                     print(f"Error loading mod {filename}: {e}")
     except Exception: 
         pass
-
 def load_game_progress():
     global all_player_data, current_user
     try:
@@ -238,27 +241,20 @@ def load_game_progress():
         if active_session:
             current_user = active_session
         
-        if os.path.exists(PROGRESS_FILE):
-            with open(PROGRESS_FILE, "r") as f:
-                loaded_data = json.load(f)
-                all_player_data["P1"] = {**dict(DEFAULT_PLAYER_DATA), **loaded_data.get("P1", {})}
-                all_player_data["P2"] = {**dict(DEFAULT_PLAYER_DATA), **loaded_data.get("P2", {})}
-        else: 
-            save_game_progress()
-
+        user = current_user if current_user else "Guest"
+        all_player_data[user] = dict(DEFAULT_PLAYER_DATA)
+        
         if current_user:
             u_data = account.load_user_data(current_user)
             if u_data:
-                all_player_data["P1"].update(u_data)
+                all_player_data[user].update(u_data)
     except Exception: 
-        save_game_progress()
-
+        pass
 def save_game_progress():
     try:
-        with open(PROGRESS_FILE, "w") as f: 
-            json.dump(all_player_data, f, indent=4)
+        user = current_user if current_user else "Guest"
         if current_user:
             import account
-            account.save_user_data(current_user, all_player_data["P1"])
+            account.save_user_data(current_user, all_player_data.get(user, DEFAULT_PLAYER_DATA))
     except Exception: 
         pass

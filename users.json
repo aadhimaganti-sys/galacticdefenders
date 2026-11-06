@@ -1,0 +1,30 @@
+{
+  "last_logged_in": "admin",
+  "primary_admin": "admin",
+  "users": {
+    "admin": {
+      "admin": true,
+      "password": "admin",
+      "player_data": {
+        "coins": 0,
+        "credits": 0,
+        "has_downloaded_cheat_menu": false,
+        "has_subscription": false,
+        "owned_ships": [
+          "default_jet"
+        ],
+        "pilot_level": 1,
+        "pilot_xp": 0,
+        "selected_ship": "default_jet",
+        "stat_points": 0,
+        "unlocked_powers": [
+          "power_autoshield"
+        ],
+        "upgrades": {
+          "blaster_level": 1,
+          "max_health": 1
+        }
+      }
+    }
+  }
+}

@@ -9,6 +9,8 @@ import megahack
 import sound_manager
 import account
 import admin_panel
+import guild
+import network
 import json
 
 stars = [
@@ -82,9 +84,51 @@ def draw_scrollable_menu(screen, options, offset, mouse_pos, title, font_t, colo
             else:
                 draw_text(opt["text"], FONT_MEDIUM, WHITE, r.centerx, r.centery, screen, drop_shadow=True)
 
+
+def show_pilot_profile(screen, clock):
+    import state
+    running = True
+    user = state.current_user if state.current_user else "Guest"
+    p_data = state.all_player_data.get(user, {})
+    
+    while running:
+        screen.fill((10, 15, 25))
+        draw_stars(screen)
+        card = pygame.Rect(SCREEN_WIDTH // 2 - 300, 100, 600, 400)
+        pygame.draw.rect(screen, (20, 30, 50), card, border_radius=20)
+        pygame.draw.rect(screen, CYAN, card, 3, border_radius=20)
+        draw_text("PILOT PROFILE", FONT_LARGE, CYAN, card.centerx, card.top + 50, screen)
+        lvl = p_data.get("pilot_level", 1)
+        xp = p_data.get("pilot_xp", 0)
+        next_xp = lvl * 1000
+        draw_text(f"Level: {lvl}", FONT_MEDIUM, WHITE, card.left + 50, card.top + 120, screen, align="left")
+        bar_bg = pygame.Rect(card.left + 50, card.top + 150, 500, 20)
+        pygame.draw.rect(screen, (40, 50, 70), bar_bg, border_radius=10)
+        xp_pct = min(1.0, xp / next_xp)
+        bar_fill = pygame.Rect(bar_bg.left, bar_bg.top, int(500 * xp_pct), 20)
+        pygame.draw.rect(screen, YELLOW, bar_fill, border_radius=10)
+        draw_text(f"XP: {xp} / {next_xp}", FONT_SMALL, WHITE, card.centerx, bar_bg.bottom + 20, screen)
+        draw_text(f"Stat Points Available: {p_data.get('stat_points', 0)}", FONT_MEDIUM, YELLOW, card.centerx, card.top + 250, screen)
+        draw_text("OWNED SHIPS:", FONT_SMALL, CYAN, card.left + 50, card.top + 300, screen, align="left")
+        owned = p_data.get("owned_ships", [])
+        ship_list = ", ".join([state.SHIP_TYPES.get(s, {}).get("name", s) for s in owned])
+        draw_text(ship_list, FONT_SMALL, WHITE, card.left + 50, card.top + 330, screen, align="left")
+        back_btn = pygame.Rect(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT - 100, 200, 50)
+        pygame.draw.rect(screen, BUTTON_COLOR, back_btn, border_radius=10)
+        draw_text("Back to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: return "QUIT_PROGRAM"
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if back_btn.collidepoint(event.pos): return "HOME"
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE: return "HOME"
+        pygame.display.flip()
+        clock.tick(60)
+    return "HOME"
+
+
 def show_home_screen(screen, clock):
-    selected_p1 = state.SHIP_TYPES.get(state.all_player_data["P1"]["selected_ship"], BASE_SHIP_TYPES["default_jet"])["name"]
-    credits_p1 = state.all_player_data["P1"]["credits"]
+    selected_p1 = state.SHIP_TYPES.get(state.all_player_data[state.current_user if state.current_user else "Guest"]["selected_ship"], BASE_SHIP_TYPES["default_jet"])["name"]
+    credits_p1 = state.all_player_data[state.current_user if state.current_user else "Guest"]["credits"]
     
     current_user_display = state.current_user if state.current_user else "P1 (Guest)"
     is_adm = state.current_user and account.is_admin(state.current_user)
@@ -102,21 +146,25 @@ def show_home_screen(screen, clock):
     ]
     
     col2_options = [
+        {"text": "🚀 Pilot Profile", "action": "PILOT_PROFILE", "color": (100, 150, 200)},
         {"text": "👤 Account / Login", "action": "ACCOUNT_SCREEN", "color": (50, 70, 110)},
+        {"text": "🚀 Pilot Profile", "action": "PILOT_PROFILE", "color": (100, 150, 255)},
         {"text": "Host LAN Game", "action": "HOST_LAN_MENU", "color": (40, 90, 130)},
         {"text": "Join LAN Game", "action": "JOIN_LAN_MENU", "color": (40, 90, 130)},
-        {"text": "Host GLOBAL Cloud", "action": "HOST_CLOUD", "color": (100, 0, 150)},
-        {"text": "Join GLOBAL Cloud", "action": "JOIN_CLOUD", "color": (100, 0, 150)},
+        {"text": "Host Global Server", "action": "HOST_CLOUD", "color": (100, 0, 150)},
+        {"text": "Global Server Browser", "action": "GLOBAL_SERVER_LIST", "color": (100, 0, 150)},
         {"text": "Galactic Web Browser", "action": "WEB_BROWSER", "color": (0, 100, 100)},
         {"text": "Store / Armory (P1)", "action": "STORE_P1", "color": (60, 110, 50)},
         {"text": "Select Ship (P1)", "action": "SELECT_SHIP_P1", "color": (70, 90, 120)},
         {"text": "The Ship Stop (Hire Crew)", "action": "SHIP_STOP", "color": (150, 80, 20)},
+        {"text": "🛡️ Galactic Guilds", "action": "GUILD_SCREEN", "color": (140, 90, 20)},
+        {"text": "🏆 Global Leaderboards", "action": "LEADERBOARDS", "color": (255, 215, 0)},
         {"text": "⚙️ Game Settings", "action": "GAME_SETTINGS", "color": (30, 80, 140)},
         {"text": "GUI Level Architect", "action": "LEVEL_EDITOR", "color": (0, 120, 60)},
         {"text": "Quit Game", "action": "QUIT_PROGRAM", "color": (120, 30, 30)},
     ]
 
-    has_loader = "power_modloader" in state.all_player_data["P1"].get("unlocked_powers", [])
+    has_loader = "power_modloader" in state.all_player_data[state.current_user if state.current_user else "Guest"].get("unlocked_powers", [])
     if has_loader:
         col2_options.insert(-2, {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "color": (110, 60, 120)})
 
@@ -159,10 +207,10 @@ def show_home_screen(screen, clock):
                             "name": "The Ancient One", "desc": "An impossibly powerful relic from a forgotten era.", 
                             "speed": 25, "color": (255, 255, 255), "wing_color": (0, 0, 0), "start_blasters": 5
                         }
-                        if "the_ancient_one" not in state.all_player_data["P1"].setdefault("owned_ships", []):
-                            state.all_player_data["P1"]["owned_ships"].append("the_ancient_one")
-                        state.all_player_data["P1"]["selected_ship"] = "the_ancient_one"
-                        state.all_player_data["P1"]["credits"] += 10000000
+                        if "the_ancient_one" not in state.all_player_data[state.current_user if state.current_user else "Guest"].setdefault("owned_ships", []):
+                            state.all_player_data[state.current_user if state.current_user else "Guest"]["owned_ships"].append("the_ancient_one")
+                        state.all_player_data[state.current_user if state.current_user else "Guest"]["selected_ship"] = "the_ancient_one"
+                        state.all_player_data[state.current_user if state.current_user else "Guest"]["credits"] += 10000000
                         state.save_game_progress()
                         secret_unlocked_timer = 300
                 else:
@@ -580,42 +628,41 @@ def show_mod_loader_screen(screen, clock):
         clock.tick(int(FPS * state.GAME_SPEED))
 
 def show_password_screen(screen, clock):
-    input_text, error_msg, error_time = "", "", 0
+    pass
+
+def show_global_server_list(screen, clock):
+    center_x = SCREEN_WIDTH // 2
+    servers = network.fetch_global_servers()
+    selected_idx = 0
+    
     while True:
+        screen.fill(BLACK)
+        draw_text("GLOBAL SERVER LIST", FONT_LARGE, MAGENTA, center_x, 50, screen, drop_shadow=True)
+        
+        if not servers:
+            draw_text("No open servers found.", FONT_MEDIUM, LIGHT_GRAY, center_x, SCREEN_HEIGHT // 2, screen)
+        else:
+            for i, s in enumerate(servers):
+                color = YELLOW if i == selected_idx else WHITE
+                y_pos = 150 + i * 50
+                draw_text(f"{s['name']} - {s['ip']}:{s['port']}", FONT_MEDIUM, color, center_x, y_pos, screen)
+        
+        draw_text("Use UP/DOWN to select, ENTER to join, ESC to go back", FONT_SMALL, CYAN, center_x, SCREEN_HEIGHT - 50, screen)
+        pygame.display.flip()
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT: return "QUIT_PROGRAM"
-            if megahack.handle_event(event): continue
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE: 
-                    sound_manager.play_sfx("ui_click")
-                    return "HOME"
-                elif event.key == pygame.K_RETURN:
-                    if input_text.strip().upper() == "OMEGA": 
-                        sound_manager.play_sfx("victory")
-                        return "PLAYING_ULTIMATE_BOSS"
-                    else: 
-                        sound_manager.play_sfx("game_over", 0.4)
-                        error_msg, error_time, input_text = "ACCESS DENIED.", pygame.time.get_ticks(), ""
-                elif event.key == pygame.K_BACKSPACE: input_text = input_text[:-1]
-                elif event.unicode.isprintable(): 
-                    input_text += event.unicode
-                    sound_manager.play_sfx("dialogue_beep", 0.4)
-        
-        screen.fill(BLACK)
-        draw_stars(screen)
-        draw_text("RESTRICTED PROTOCOL", FONT_LARGE, RED, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 3, screen)
-        input_rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2, 400, 50)
-        pygame.draw.rect(screen, DARK_GRAY, input_rect, border_radius=10)
-        
-        text_surf = FONT_MEDIUM.render(input_text, True, YELLOW)
-        screen.blit(text_surf, (input_rect.x + 10, input_rect.y + 10))
-        
-        if error_msg and pygame.time.get_ticks() - error_time < 2000:
-            draw_text(error_msg, FONT_MEDIUM, RED, SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 80, screen)
-            
-        megahack.draw(screen)
-        pygame.display.flip()
+                if event.key == pygame.K_ESCAPE: return "HOME"
+                if event.key == pygame.K_UP: selected_idx = max(0, selected_idx - 1)
+                if event.key == pygame.K_DOWN: selected_idx = min(len(servers) - 1, selected_idx + 1)
+                if event.key == pygame.K_RETURN and servers:
+                    s = servers[selected_idx]
+                    network.network_target = (s['ip'], s['port'])
+                    return "JOIN_CLOUD"
+                    
         clock.tick(int(FPS * state.GAME_SPEED))
+
 
 def show_account_screen(screen, clock):
     username_input = ""
@@ -659,7 +706,7 @@ def show_account_screen(screen, clock):
                         state.current_user = u
                         u_data = account.load_user_data(u)
                         if u_data:
-                            state.all_player_data["P1"].update(u_data)
+                            state.all_player_data[state.current_user if state.current_user else "Guest"].update(u_data)
                         status_msg = f"Successfully logged in as '{u}'!"
                         status_color = WIN_GREEN
                         status_time = pygame.time.get_ticks()
@@ -705,7 +752,7 @@ def show_account_screen(screen, clock):
                         state.current_user = u
                         u_data = account.load_user_data(u)
                         if u_data:
-                            state.all_player_data["P1"].update(u_data)
+                            state.all_player_data[state.current_user if state.current_user else "Guest"].update(u_data)
                         status_msg = f"Successfully logged in as '{u}'!"
                         status_color = WIN_GREEN
                         status_time = pygame.time.get_ticks()
@@ -1256,7 +1303,7 @@ def show_terminal_admin_panel(screen, clock):
                             u_data["credits"] = max(0, new_val)
                             account.save_user_data(pending_user, u_data)
                             if state.current_user == pending_user:
-                                state.all_player_data["P1"]["credits"] = max(0, new_val)
+                                state.all_player_data[state.current_user if state.current_user else "Guest"]["credits"] = max(0, new_val)
                             logs.append(f"[SUCCESS] Credits for '{pending_user}' set to {new_val:,}.")
                             sound_manager.play_sfx("powerup_collect")
                         except ValueError:
@@ -1497,7 +1544,7 @@ def show_admin_options(screen, clock):
                     u_data["credits"] = u_data.get("credits", 0) + 1000
                     account.save_user_data(selected_user, u_data)
                     if state.current_user == selected_user:
-                        state.all_player_data["P1"]["credits"] = u_data["credits"]
+                        state.all_player_data[state.current_user if state.current_user else "Guest"]["credits"] = u_data["credits"]
                     status_msg = f"Added +1,000 credits to '{selected_user}'."
                     status_color = WIN_GREEN
                     status_time = pygame.time.get_ticks()
@@ -1511,7 +1558,7 @@ def show_admin_options(screen, clock):
 
                 elif p1_credits_rect.collidepoint(mouse_pos):
                     sound_manager.play_sfx("ui_click")
-                    state.all_player_data["P1"]["credits"] += 10000
+                    state.all_player_data[state.current_user if state.current_user else "Guest"]["credits"] += 10000
                     state.save_game_progress()
                     status_msg = "Added +10,000 credits to P1."
                     status_color = WIN_GREEN
@@ -1613,7 +1660,7 @@ def show_admin_options(screen, clock):
 
         h_p1 = p1_credits_rect.collidepoint(mouse_pos)
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if h_p1 else (50, 80, 120), p1_credits_rect, border_radius=6)
-        draw_text("Give +10,000 Credits to P1", FONT_SMALL, WHITE, p1_credits_rect.centerx, p1_credits_rect.centery, screen)
+        draw_text("Give +10,000 Credits to Player", FONT_SMALL, WHITE, p1_credits_rect.centerx, p1_credits_rect.centery, screen)
 
         h_as = admin_settings_btn.collidepoint(mouse_pos)
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if h_as else (30, 90, 150), admin_settings_btn, border_radius=6)
@@ -1740,7 +1787,7 @@ def show_admin_settings_screen(screen, clock):
 
                 elif reset_progress_rect.collidepoint(mouse_pos):
                     sound_manager.play_sfx("game_over")
-                    state.all_player_data = {"P1": dict(state.DEFAULT_PLAYER_DATA), "P2": dict(state.DEFAULT_PLAYER_DATA)}
+                    state.all_player_data.clear()
                     state.save_game_progress()
                     status_msg = "🚨 Reset Game Progress to initial defaults!"
                     status_color = RED
@@ -1929,7 +1976,7 @@ def show_web_browser_screen(screen, clock):
                     if pygame.Rect(bx+250, by+330, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/news"
                     if pygame.Rect(bx+250, by+400, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/mods"
                     if pygame.Rect(bx+250, by+470, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/updates"
-                    if state.all_player_data["P1"].get("browser_v2") and pygame.Rect(bx+250, by+540, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/v2_vault"
+                    if state.all_player_data[state.current_user if state.current_user else "Guest"].get("browser_v2") and pygame.Rect(bx+250, by+540, 400, 50).collidepoint(mouse_pos): current_url = "http://galactic.net/v2_vault"
                     
                     if current_url != "http://galactic.net/home":
                         history = history[:history_idx+1]
@@ -1938,14 +1985,14 @@ def show_web_browser_screen(screen, clock):
                         
                 elif current_url == "http://darknet.galactic/megahack":
                     if pygame.Rect(bx+300, by+350, 300, 60).collidepoint(mouse_pos): 
-                        state.all_player_data["P1"]["has_downloaded_cheat_menu"] = True
+                        state.all_player_data[state.current_user if state.current_user else "Guest"]["has_downloaded_cheat_menu"] = True
                         state.save_game_progress()
                         
                 elif current_url == "http://galactic.net/mods":
-                    has_loader = "power_modloader" in state.all_player_data["P1"]["unlocked_powers"]
+                    has_loader = "power_modloader" in state.all_player_data[state.current_user if state.current_user else "Guest"]["unlocked_powers"]
                     if not has_loader:
                         if pygame.Rect(bx+300, by+200, 300, 60).collidepoint(mouse_pos):
-                            state.all_player_data["P1"]["unlocked_powers"].append("power_modloader")
+                            state.all_player_data[state.current_user if state.current_user else "Guest"]["unlocked_powers"].append("power_modloader")
                             state.save_game_progress()
                             sound_manager.play_sfx("ui_click")
                     else:
@@ -2024,30 +2071,30 @@ def show_web_browser_screen(screen, clock):
                         sound_manager.play_sfx("victory")
 
                 elif current_url == "http://galactic.net/shipyard":
-                    if pygame.Rect(bx+250, by+300, 400, 80).collidepoint(mouse_pos) and state.all_player_data["P1"]["credits"] >= 8000:
-                        if "shadow_wraith" not in state.all_player_data["P1"]["owned_ships"]:
-                            state.all_player_data["P1"]["credits"] -= 8000
-                            state.all_player_data["P1"]["owned_ships"].append("shadow_wraith")
+                    if pygame.Rect(bx+250, by+300, 400, 80).collidepoint(mouse_pos) and state.all_player_data[state.current_user if state.current_user else "Guest"]["credits"] >= 8000:
+                        if "shadow_wraith" not in state.all_player_data[state.current_user if state.current_user else "Guest"]["owned_ships"]:
+                            state.all_player_data[state.current_user if state.current_user else "Guest"]["credits"] -= 8000
+                            state.all_player_data[state.current_user if state.current_user else "Guest"]["owned_ships"].append("shadow_wraith")
                             state.save_game_progress()
                             sound_manager.play_sfx("powerup_collect")
 
                 elif current_url == "http://galactic.net/updates":
                     dl_v2_btn = pygame.Rect(bx+250, by+300, 400, 80)
-                    if dl_v2_btn.collidepoint(mouse_pos) and not state.all_player_data["P1"].get("browser_v2"):
-                        state.all_player_data["P1"]["browser_v2"] = True
+                    if dl_v2_btn.collidepoint(mouse_pos) and not state.all_player_data[state.current_user if state.current_user else "Guest"].get("browser_v2"):
+                        state.all_player_data[state.current_user if state.current_user else "Guest"]["browser_v2"] = True
                         state.save_game_progress()
                         sound_manager.play_sfx("level_up")
 
                 elif current_url == "http://galactic.net/v2_vault":
                     dl_ship_btn = pygame.Rect(bx+250, by+200, 400, 80)
-                    if dl_ship_btn.collidepoint(mouse_pos) and "v2_phantom" not in state.all_player_data["P1"]["owned_ships"]:
-                        state.all_player_data["P1"]["owned_ships"].append("v2_phantom")
+                    if dl_ship_btn.collidepoint(mouse_pos) and "v2_phantom" not in state.all_player_data[state.current_user if state.current_user else "Guest"]["owned_ships"]:
+                        state.all_player_data[state.current_user if state.current_user else "Guest"]["owned_ships"].append("v2_phantom")
                         state.save_game_progress()
                         sound_manager.play_sfx("powerup_collect")
                         
                     dl_pwr_btn = pygame.Rect(bx+250, by+320, 400, 80)
-                    if dl_pwr_btn.collidepoint(mouse_pos) and "power_magnet" not in state.all_player_data["P1"]["unlocked_powers"]:
-                        state.all_player_data["P1"]["unlocked_powers"].append("power_magnet")
+                    if dl_pwr_btn.collidepoint(mouse_pos) and "power_magnet" not in state.all_player_data[state.current_user if state.current_user else "Guest"]["unlocked_powers"]:
+                        state.all_player_data[state.current_user if state.current_user else "Guest"]["unlocked_powers"].append("power_magnet")
                         state.save_game_progress()
                         sound_manager.play_sfx("powerup_collect")
             
@@ -2122,14 +2169,14 @@ def show_web_browser_screen(screen, clock):
         
         # Page Content
         if current_url == "http://galactic.net/home":
-            title = "GALACTIC WEB PORTAL v2.0" if state.all_player_data["P1"].get("browser_v2") else "GALACTIC WEB PORTAL"
+            title = "GALACTIC WEB PORTAL v2.0" if state.all_player_data[state.current_user if state.current_user else "Guest"].get("browser_v2") else "GALACTIC WEB PORTAL"
             draw_text(title, FONT_LARGE, CYAN, bx + browser_w//2, by + 120, screen, drop_shadow=True)
             link1, link2, link3, link4 = pygame.Rect(bx+250, by+190, 400, 50), pygame.Rect(bx+250, by+260, 400, 50), pygame.Rect(bx+250, by+330, 400, 50), pygame.Rect(bx+250, by+400, 400, 50)
             link5 = pygame.Rect(bx+250, by+470, 400, 50)
             
             links = [(link1, "▶ Darknet: MegaHack v7", MAGENTA), (link2, "▶ Black Market Shipyard", ORANGE), (link3, "▶ Galactic News Network", YELLOW), (link4, "▶ Modding Community Hub", (100, 255, 100)), (link5, "▶ System Updates", LIGHT_GRAY)]
             
-            if state.all_player_data["P1"].get("browser_v2"):
+            if state.all_player_data[state.current_user if state.current_user else "Guest"].get("browser_v2"):
                 link6 = pygame.Rect(bx+250, by+540, 400, 50)
                 links.append((link6, "▶ The Quantum Vault (v2.0 Exclusive)", CYAN))
                 
@@ -2150,7 +2197,7 @@ def show_web_browser_screen(screen, clock):
             buy_btn = pygame.Rect(bx+250, by+300, 400, 80)
             pygame.draw.rect(screen, BUTTON_COLOR, buy_btn, border_radius=10)
             pygame.draw.rect(screen, (120, 140, 180), buy_btn, 2, border_radius=10)
-            msg = "OWNED" if "shadow_wraith" in state.all_player_data["P1"]["owned_ships"] else "BUY 'SHADOW WRAITH' - 8000 Cr"
+            msg = "OWNED" if "shadow_wraith" in state.all_player_data[state.current_user if state.current_user else "Guest"]["owned_ships"] else "BUY 'SHADOW WRAITH' - 8000 Cr"
             draw_text(msg, FONT_MEDIUM, WHITE, buy_btn.centerx, buy_btn.centery, screen)
             
         elif current_url == "http://galactic.net/news":
@@ -2162,7 +2209,7 @@ def show_web_browser_screen(screen, clock):
 
         elif current_url == "http://galactic.net/mods":
             draw_text("COMMUNITY MODS HUB", FONT_LARGE, (100, 255, 100), bx + browser_w//2, by + 100, screen)
-            has_loader = "power_modloader" in state.all_player_data["P1"]["unlocked_powers"]
+            has_loader = "power_modloader" in state.all_player_data[state.current_user if state.current_user else "Guest"]["unlocked_powers"]
             
             if not has_loader:
                 dl_loader_btn = pygame.Rect(bx+300, by+200, 300, 60)
@@ -2212,7 +2259,7 @@ def show_web_browser_screen(screen, clock):
 
         elif current_url == "http://galactic.net/updates":
             draw_text("SYSTEM UPDATES & FIRMWARE", FONT_LARGE, LIGHT_GRAY, bx + browser_w//2, by + 120, screen)
-            if state.all_player_data["P1"].get("browser_v2"):
+            if state.all_player_data[state.current_user if state.current_user else "Guest"].get("browser_v2"):
                 draw_text("System is up to date! (v2.0 Installed)", FONT_MEDIUM, WIN_GREEN, bx + browser_w//2, by + 200, screen)
             else:
                 draw_text("New Update Available: Galactic Browser v2.0", FONT_MEDIUM, YELLOW, bx + browser_w//2, by + 200, screen)
@@ -2227,7 +2274,7 @@ def show_web_browser_screen(screen, clock):
             
             # V2 Phantom Ship
             dl_ship_btn = pygame.Rect(bx+250, by+200, 400, 80)
-            owned_ship = "v2_phantom" in state.all_player_data["P1"]["owned_ships"]
+            owned_ship = "v2_phantom" in state.all_player_data[state.current_user if state.current_user else "Guest"]["owned_ships"]
             is_hover_ship = dl_ship_btn.collidepoint(mouse_pos)
             pygame.draw.rect(screen, BUTTON_DISABLED_COLOR if owned_ship else (BUTTON_HOVER_COLOR if is_hover_ship else BUTTON_COLOR), dl_ship_btn, border_radius=10)
             pygame.draw.rect(screen, (100, 100, 120) if owned_ship else (CYAN if is_hover_ship else (120, 140, 180)), dl_ship_btn, 2, border_radius=10)
@@ -2236,7 +2283,7 @@ def show_web_browser_screen(screen, clock):
             
             # Magnetic Field Generator Powerup
             dl_pwr_btn = pygame.Rect(bx+250, by+320, 400, 80)
-            owned_pwr = "power_magnet" in state.all_player_data["P1"]["unlocked_powers"]
+            owned_pwr = "power_magnet" in state.all_player_data[state.current_user if state.current_user else "Guest"]["unlocked_powers"]
             is_hover_pwr = dl_pwr_btn.collidepoint(mouse_pos)
             pygame.draw.rect(screen, BUTTON_DISABLED_COLOR if owned_pwr else (BUTTON_HOVER_COLOR if is_hover_pwr else BUTTON_COLOR), dl_pwr_btn, border_radius=10)
             pygame.draw.rect(screen, (100, 100, 120) if owned_pwr else (CYAN if is_hover_pwr else (120, 140, 180)), dl_pwr_btn, 2, border_radius=10)
@@ -2601,7 +2648,7 @@ def show_game_over_screen(screen, clock, did_win_game, winner_id=0):
         stats_y = card_rect.top + 105
         stat_box1 = pygame.Rect(center_x - 240, stats_y, 480, 40)
         pygame.draw.rect(screen, (30, 35, 50), stat_box1, border_radius=6)
-        draw_text(f"P1 Final Score: {state.score_p1}", FONT_MEDIUM, YELLOW, stat_box1.centerx, stat_box1.centery, screen)
+        draw_text(f"Final Score: {state.score_p1}", FONT_MEDIUM, YELLOW, stat_box1.centerx, stat_box1.centery, screen)
         
         if state.score_p2 > 0:
             stat_box2 = pygame.Rect(center_x - 240, stats_y + 48, 480, 40)
@@ -2754,7 +2801,7 @@ def show_control_room(screen, clock):
         megahack.draw(screen)
         pygame.display.flip()
 def show_ship_stop_screen(screen, clock):
-    player_data = state.all_player_data.get("P1", {})
+    player_data = state.all_player_data.get(state.current_user if state.current_user else "Guest", {})
     player_data.setdefault("credits", 0)
     player_data.setdefault("owned_crew", ["Rook", "Vax", "Sparky", "Kael"])
     
@@ -2857,6 +2904,392 @@ def show_ship_stop_screen(screen, clock):
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if back_btn.collidepoint(mouse_pos) else BUTTON_COLOR, back_btn, border_radius=10)
         draw_text("Back to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
         
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))
+
+
+def show_guild_chat(screen, clock):
+    import guild
+    import state
+    
+    running = True
+    user = state.current_user if state.current_user else "Guest"
+    player_guild = guild.get_player_guild(user)
+    
+    if not player_guild:
+        pygame.time.delay(1000)
+        return "GUILD_SCREEN"
+        
+    guild_tag = player_guild["tag"]
+    input_text = ""
+    
+    while running:
+        screen.fill((10, 15, 25))
+        header_rect = pygame.Rect(0, 0, SCREEN_WIDTH, 60)
+        pygame.draw.rect(screen, (20, 30, 50), header_rect)
+        pygame.draw.line(screen, CYAN, (0, 60), (SCREEN_WIDTH, 60), 2)
+        draw_text(f"GUILD CHAT: [{guild_tag}] {player_guild['name']}", FONT_MEDIUM, WHITE, SCREEN_WIDTH // 2, 30, screen)
+        chat_box = pygame.Rect(50, 80, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 200)
+        pygame.draw.rect(screen, (15, 20, 35), chat_box, border_radius=10)
+        pygame.draw.rect(screen, (40, 50, 70), chat_box, 2, border_radius=10)
+        messages = guild.get_guild_messages(guild_tag)
+        for i, msg in enumerate(messages[-15:]):
+            y_pos = chat_box.top + 20 + i * 30
+            user_col = CYAN if msg["username"] == user else YELLOW
+            draw_text(f"{msg['username']}: {msg['message']}", FONT_SMALL, user_col, chat_box.left + 20, y_pos, screen, align="left")
+        input_rect = pygame.Rect(50, SCREEN_HEIGHT - 100, SCREEN_WIDTH - 100, 50)
+        pygame.draw.rect(screen, (20, 30, 50), input_rect, border_radius=10)
+        pygame.draw.rect(screen, CYAN, input_rect, 2, border_radius=10)
+        draw_text(f"Message: {input_text}_", FONT_SMALL, WHITE, input_rect.centerx, input_rect.centery, screen)
+        draw_text("[ESC] Back to Guilds", FONT_SMALL, LIGHT_GRAY, SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30, screen)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: return "QUIT_PROGRAM"
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE: running = False
+                elif event.key == pygame.K_RETURN:
+                    if input_text.strip():
+                        guild.send_guild_message(guild_tag, user, input_text)
+                        input_text = ""
+                elif event.key == pygame.K_BACKSPACE: input_text = input_text[:-1]
+                elif event.unicode.isprintable(): input_text += event.unicode
+        pygame.display.flip()
+        clock.tick(60)
+    return "GUILD_SCREEN"
+
+
+def show_guild_screen(screen, clock):
+    center_x = SCREEN_WIDTH // 2
+    current_username = state.current_user if state.current_user else "Player 1"
+    toast_msg = ""
+    toast_color = WIN_GREEN
+    toast_time = 0
+
+    new_guild_name = ""
+    new_guild_tag = ""
+    create_field = 0 # 0: name, 1: tag
+    in_create_modal = False
+
+    back_btn = pygame.Rect(center_x - 100, SCREEN_HEIGHT - 65, 200, 45)
+
+    while True:
+        my_guild = guild.get_player_guild(current_username)
+        all_guilds = guild.get_all_guilds()
+        mouse_pos = pygame.mouse.get_pos()
+        now = pygame.time.get_ticks()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "QUIT_PROGRAM"
+            if megahack.handle_event(event):
+                continue
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    if in_create_modal:
+                        in_create_modal = False
+                    else:
+                        sound_manager.play_sfx("ui_click")
+                        return "HOME"
+                if in_create_modal:
+                    if event.key == pygame.K_TAB:
+                        create_field = (create_field + 1) % 2
+                    elif event.key == pygame.K_BACKSPACE:
+                        if create_field == 0 and len(new_guild_name) > 0:
+                            new_guild_name = new_guild_name[:-1]
+                        elif create_field == 1 and len(new_guild_tag) > 0:
+                            new_guild_tag = new_guild_tag[:-1]
+                    elif event.key == pygame.K_RETURN:
+                        if new_guild_name and new_guild_tag:
+                            pdata = state.all_player_data.get(state.current_user if state.current_user else "Guest", {})
+                            if pdata.get("credits", 0) >= 500:
+                                pdata["credits"] -= 500
+                                state.save_game_progress()
+                                ok = guild.create_guild(new_guild_name, new_guild_tag, "Custom Player Guild", current_username)
+                                if ok:
+                                    toast_msg = f"Guild '{new_guild_name}' created successfully!"
+                                    toast_color = WIN_GREEN
+                                    sound_manager.play_sfx("victory")
+                                    in_create_modal = False
+                                else:
+                                    toast_msg = "Creation failed: Name or tag taken!"
+                                    toast_color = RED
+                                    sound_manager.play_sfx("game_over", 0.4)
+                            else:
+                                toast_msg = "Not enough credits! (Need 500 Cr)"
+                                toast_color = RED
+                                sound_manager.play_sfx("game_over", 0.4)
+                            toast_time = now
+                elif event.key == pygame.K_h:
+                    sound_manager.play_sfx("ui_click")
+                    return "HOME"
+
+            if in_create_modal and event.type == pygame.TEXTINPUT:
+                c = event.text
+                if c.isprintable():
+                    if create_field == 0 and len(new_guild_name) < 20:
+                        new_guild_name += c
+                    elif create_field == 1 and len(new_guild_tag) < 6:
+                        new_guild_tag += c.upper()
+                    sound_manager.play_sfx("dialogue_beep", 0.3)
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if back_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    return "HOME"
+
+                if in_create_modal:
+                    confirm_btn = pygame.Rect(center_x - 120, SCREEN_HEIGHT // 2 + 110, 240, 40)
+                    cancel_btn = pygame.Rect(center_x - 120, SCREEN_HEIGHT // 2 + 160, 240, 35)
+                    name_box = pygame.Rect(center_x - 180, SCREEN_HEIGHT // 2 - 55, 360, 38)
+                    tag_box = pygame.Rect(center_x - 180, SCREEN_HEIGHT // 2 + 15, 360, 38)
+
+                    if name_box.collidepoint(mouse_pos):
+                        create_field = 0
+                    elif tag_box.collidepoint(mouse_pos):
+                        create_field = 1
+                    elif confirm_btn.collidepoint(mouse_pos):
+                        if new_guild_name and new_guild_tag:
+                            pdata = state.all_player_data.get(state.current_user if state.current_user else "Guest", {})
+                            if pdata.get("credits", 0) >= 500:
+                                pdata["credits"] -= 500
+                                state.save_game_progress()
+                                ok = guild.create_guild(new_guild_name, new_guild_tag, "Custom Player Guild", current_username)
+                                if ok:
+                                    toast_msg = f"Guild '{new_guild_name}' established!"
+                                    toast_color = WIN_GREEN
+                                    sound_manager.play_sfx("victory")
+                                    in_create_modal = False
+                                else:
+                                    toast_msg = "Creation failed: Name or tag taken!"
+                                    toast_color = RED
+                                    sound_manager.play_sfx("game_over", 0.4)
+                            else:
+                                toast_msg = "Need 500 Credits to charter a guild!"
+                                toast_color = RED
+                                sound_manager.play_sfx("game_over", 0.4)
+                            toast_time = now
+                    elif cancel_btn.collidepoint(mouse_pos):
+                        in_create_modal = False
+                        sound_manager.play_sfx("ui_click")
+                else:
+                    if not my_guild:
+                        create_btn = pygame.Rect(center_x - 140, 130, 280, 40)
+                        if create_btn.collidepoint(mouse_pos):
+                            in_create_modal = True
+                            new_guild_name = ""
+                            new_guild_tag = ""
+                            create_field = 0
+                            sound_manager.play_sfx("ui_click")
+
+                        for i, g in enumerate(all_guilds):
+                            gy = 240 + i * 110
+                            join_btn = pygame.Rect(center_x + 220, gy + 25, 120, 45)
+                            if join_btn.collidepoint(mouse_pos):
+                                if guild.join_guild(g["name"], current_username):
+                                    toast_msg = f"Joined {g['name']}!"
+                                    toast_color = WIN_GREEN
+                                    sound_manager.play_sfx("powerup")
+                                else:
+                                    toast_msg = "Failed to join guild!"
+                                    toast_color = RED
+                                toast_time = now
+                    else:
+                        dep_100 = pygame.Rect(center_x - 320, 260, 180, 38)
+                        dep_1000 = pygame.Rect(center_x - 120, 260, 180, 38)
+                        chat_btn = pygame.Rect(center_x + 10, 260, 120, 38)
+            leave_btn = pygame.Rect(center_x + 140, 260, 180, 38)
+            
+            if dep_100.collidepoint(mouse_pos):
+                if guild.deposit_credits(current_username, 100):
+                    toast_msg = "Deposited 100 Cr into Guild Vault!"
+                    toast_color = (255, 215, 0)
+                    sound_manager.play_sfx("powerup")
+                else:
+                    toast_msg = "Not enough credits!"
+                    toast_color = RED
+                toast_time = now
+            elif dep_1000.collidepoint(mouse_pos):
+                if guild.deposit_credits(current_username, 1000):
+                    toast_msg = "Deposited 1,000 Cr into Guild Vault!"
+                    toast_color = (255, 215, 0)
+                    sound_manager.play_sfx("powerup")
+                else:
+                    toast_msg = "Not enough credits!"
+                    toast_color = RED
+                toast_time = now
+            elif chat_btn.collidepoint(mouse_pos):
+                sound_manager.play_sfx("ui_click")
+                return "GUILD_CHAT"
+            elif leave_btn.collidepoint(mouse_pos):
+                guild.leave_guild(current_username)
+                toast_msg = "You have departed from the guild."
+                toast_color = YELLOW
+                sound_manager.play_sfx("ui_click")
+                toast_time = now
+
+            avail_perks = [
+                ("Credit Bonus II", 5000),
+                ("Shield Harmonics II", 7500),
+                ("Hyperdrive Booster", 10000)
+            ]
+            tech_left = center_x + 20
+            for p_idx, (p_name, p_cost) in enumerate(avail_perks):
+                ty = 375 + p_idx * 48
+                up_btn = pygame.Rect(tech_left + 175, ty - 12, 145, 26)
+                if up_btn.collidepoint(mouse_pos):
+                    if guild.upgrade_guild_perk(my_guild["name"], p_name, p_cost):
+                        toast_msg = f"Unlocked Guild Perk: {p_name}!"
+                        toast_color = CYAN
+                        sound_manager.play_sfx("victory")
+                    else:
+                        toast_msg = "Cannot unlock: Insufficient bank funds or already owned!"
+                        toast_color = RED
+                        sound_manager.play_sfx("game_over", 0.4)
+                    toast_time = now
+
+        screen.fill((12, 16, 26))
+        draw_stars(screen)
+
+        draw_text("INTERSTELLAR GUILD SYSTEM", FONT_LARGE, (255, 215, 0), center_x, 50, screen, drop_shadow=True)
+        credits_amt = state.all_player_data.get(state.current_user if state.current_user else "Guest", {}).get("credits", 0)
+        draw_text(f"Pilot: {current_username}   |   Credits: {credits_amt} Cr", FONT_MEDIUM, CYAN, center_x, 95, screen)
+
+        if not my_guild:
+            create_btn = pygame.Rect(center_x - 140, 130, 280, 40)
+            c_hover = create_btn.collidepoint(mouse_pos)
+            pygame.draw.rect(screen, (0, 160, 90) if c_hover else (0, 120, 65), create_btn, border_radius=8)
+            pygame.draw.rect(screen, WIN_GREEN, create_btn, 2, border_radius=8)
+            draw_text("+ Create New Guild (500 Cr)", FONT_SMALL, WHITE, center_x, create_btn.centery, screen)
+
+            draw_text("AVAILABLE GALACTIC GUILDS", FONT_MEDIUM, YELLOW, center_x, 200, screen, drop_shadow=True)
+
+            for i, g in enumerate(all_guilds):
+                gy = 240 + i * 110
+                gcard = pygame.Rect(center_x - 360, gy, 720, 95)
+                pygame.draw.rect(screen, (22, 30, 48), gcard, border_radius=10)
+                pygame.draw.rect(screen, CYAN, gcard, 2, border_radius=10)
+
+                draw_text(f"[{g.get('tag', 'VOID')}] {g.get('name', '')} (Level {g.get('level', 1)})", FONT_MEDIUM, (255, 215, 0), gcard.left + 20, gy + 22, screen, align="left")
+                draw_text(g.get("description", ""), FONT_SMALL, LIGHT_GRAY, gcard.left + 20, gy + 50, screen, align="left")
+                draw_text(f"Leader: {g.get('leader', '')} | Members: {len(g.get('members', []))} | Bank: {g.get('bank_credits', 0)} Cr", FONT_SMALL, CYAN, gcard.left + 20, gy + 74, screen, align="left")
+
+                join_btn = pygame.Rect(center_x + 220, gy + 25, 120, 45)
+                j_hover = join_btn.collidepoint(mouse_pos)
+                pygame.draw.rect(screen, BUTTON_HOVER_COLOR if j_hover else BUTTON_COLOR, join_btn, border_radius=8)
+                pygame.draw.rect(screen, WHITE, join_btn, 2, border_radius=8)
+                draw_text("JOIN", FONT_MEDIUM, WHITE, join_btn.centerx, join_btn.centery, screen)
+        else:
+            header_card = pygame.Rect(center_x - 360, 130, 720, 115)
+            pygame.draw.rect(screen, (18, 28, 48), header_card, border_radius=10)
+            pygame.draw.rect(screen, (255, 215, 0), header_card, 2, border_radius=10)
+
+            draw_text(f"[{my_guild.get('tag', 'VOID')}] {my_guild.get('name', '')}  -  Level {my_guild.get('level', 1)}", FONT_LARGE, (255, 215, 0), header_card.left + 20, 160, screen, align="left")
+            draw_text(my_guild.get("description", ""), FONT_SMALL, LIGHT_GRAY, header_card.left + 20, 192, screen, align="left")
+            draw_text(f"Vault Balance: {my_guild.get('bank_credits', 0)} Cr   |   XP: {my_guild.get('xp', 0)} / {my_guild.get('level', 1) * 5000}", FONT_SMALL, WIN_GREEN, header_card.left + 20, 220, screen, align="left")
+
+            dep_100 = pygame.Rect(center_x - 320, 260, 180, 38)
+            d1_hover = dep_100.collidepoint(mouse_pos)
+            pygame.draw.rect(screen, (0, 140, 70) if d1_hover else (0, 100, 50), dep_100, border_radius=8)
+            draw_text("+100 Cr Vault", FONT_SMALL, WHITE, dep_100.centerx, dep_100.centery, screen)
+
+            dep_1000 = pygame.Rect(center_x - 120, 260, 180, 38)
+            d2_hover = dep_1000.collidepoint(mouse_pos)
+            pygame.draw.rect(screen, (0, 140, 70) if d2_hover else (0, 100, 50), dep_1000, border_radius=8)
+            draw_text("+1,000 Cr Vault", FONT_SMALL, WHITE, dep_1000.centerx, dep_1000.centery, screen)
+
+            chat_btn = pygame.Rect(center_x + 10, 260, 120, 38)
+            leave_btn = pygame.Rect(center_x + 140, 260, 180, 38)
+            l_hover = leave_btn.collidepoint(mouse_pos)
+            c_chat_hover = chat_btn.collidepoint(mouse_pos)
+            pygame.draw.rect(screen, (50, 80, 120) if c_chat_hover else (30, 60, 90), chat_btn, border_radius=8)
+            draw_text("Guild Chat", FONT_SMALL, WHITE, chat_btn.centerx, chat_btn.centery, screen)
+            c_chat_hover = chat_btn.collidepoint(mouse_pos)
+            pygame.draw.rect(screen, (50, 80, 120) if c_chat_hover else (30, 60, 90), chat_btn, border_radius=8)
+            draw_text("Guild Chat", FONT_SMALL, WHITE, chat_btn.centerx, chat_btn.centery, screen)
+            pygame.draw.rect(screen, (180, 40, 40) if l_hover else (120, 30, 30), leave_btn, border_radius=8)
+            draw_text("Leave Guild", FONT_SMALL, WHITE, leave_btn.centerx, leave_btn.centery, screen)
+
+            roster_card = pygame.Rect(center_x - 360, 320, 340, 240)
+            pygame.draw.rect(screen, (18, 24, 38), roster_card, border_radius=10)
+            pygame.draw.rect(screen, CYAN, roster_card, 2, border_radius=10)
+            draw_text(f"GUILD ROSTER ({len(my_guild.get('members', []))})", FONT_SMALL, YELLOW, roster_card.left + 20, 340, screen, align="left")
+
+            ry = 370
+            for mem in my_guild.get("members", [])[:5]:
+                rank_str = f" [{mem.get('rank', 'Member').upper()}]" if mem.get("rank") in ["Leader", "Officer"] else ""
+                draw_text(f"{mem.get('username', '')}{rank_str}", FONT_SMALL, WHITE, roster_card.left + 20, ry, screen, align="left")
+                draw_text(f"{mem.get('contributions', 0)} Cr", FONT_SMALL, (255, 215, 0), roster_card.right - 20, ry, screen, align="right")
+                ry += 32
+
+            tech_card = pygame.Rect(center_x + 20, 320, 340, 240)
+            pygame.draw.rect(screen, (18, 24, 38), tech_card, border_radius=10)
+            pygame.draw.rect(screen, MAGENTA, tech_card, 2, border_radius=10)
+            draw_text("GUILD PERKS & TECH TREE", FONT_SMALL, MAGENTA, tech_card.left + 20, 340, screen, align="left")
+
+            avail_perks = [
+                ("Credit Bonus II", 5000),
+                ("Shield Harmonics II", 7500),
+                ("Hyperdrive Booster", 10000)
+            ]
+            ty = 375
+            for p_name, p_cost in avail_perks:
+                has_perk = p_name in my_guild.get("perks", [])
+                draw_text(p_name, FONT_SMALL, WIN_GREEN if has_perk else WHITE, tech_card.left + 20, ty, screen, align="left")
+                up_btn = pygame.Rect(tech_card.left + 175, ty - 12, 145, 26)
+                if has_perk:
+                    pygame.draw.rect(screen, (20, 80, 40), up_btn, border_radius=6)
+                    draw_text("ACTIVE", FONT_SMALL, WIN_GREEN, up_btn.centerx, up_btn.centery, screen)
+                else:
+                    u_hover = up_btn.collidepoint(mouse_pos)
+                    pygame.draw.rect(screen, (140, 40, 140) if u_hover else (90, 30, 90), up_btn, border_radius=6)
+                    draw_text(f"BUY ({p_cost} Cr)", FONT_SMALL, WHITE, up_btn.centerx, up_btn.centery, screen)
+                ty += 48
+
+        if in_create_modal:
+            dim_surf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            dim_surf.fill((0, 0, 0, 180))
+            screen.blit(dim_surf, (0, 0))
+
+            modal = pygame.Rect(center_x - 220, SCREEN_HEIGHT // 2 - 170, 440, 370)
+            pygame.draw.rect(screen, (20, 26, 42), modal, border_radius=12)
+            pygame.draw.rect(screen, (255, 215, 0), modal, 3, border_radius=12)
+
+            draw_text("CHARTER NEW GUILD", FONT_MEDIUM, (255, 215, 0), center_x, modal.top + 30, screen, drop_shadow=True)
+            draw_text("Cost: 500 Credits", FONT_SMALL, YELLOW, center_x, modal.top + 60, screen)
+
+            draw_text("Guild Name:", FONT_SMALL, LIGHT_GRAY, modal.left + 40, modal.top + 95, screen, align="left")
+            name_box = pygame.Rect(modal.left + 40, modal.top + 115, 360, 38)
+            pygame.draw.rect(screen, (10, 14, 24), name_box, border_radius=6)
+            pygame.draw.rect(screen, CYAN if create_field == 0 else LIGHT_GRAY, name_box, 2, border_radius=6)
+            draw_text(new_guild_name + ("_" if create_field == 0 else ""), FONT_SMALL, WHITE, name_box.left + 10, name_box.centery, screen, align="left")
+
+            draw_text("Guild Tag (Max 5 letters):", FONT_SMALL, LIGHT_GRAY, modal.left + 40, modal.top + 165, screen, align="left")
+            tag_box = pygame.Rect(modal.left + 40, modal.top + 185, 360, 38)
+            pygame.draw.rect(screen, (10, 14, 24), tag_box, border_radius=6)
+            pygame.draw.rect(screen, CYAN if create_field == 1 else LIGHT_GRAY, tag_box, 2, border_radius=6)
+            draw_text(new_guild_tag + ("_" if create_field == 1 else ""), FONT_SMALL, WHITE, tag_box.left + 10, tag_box.centery, screen, align="left")
+
+            confirm_btn = pygame.Rect(center_x - 120, SCREEN_HEIGHT // 2 + 110, 240, 40)
+            c_hover = confirm_btn.collidepoint(mouse_pos)
+            pygame.draw.rect(screen, (0, 160, 90) if c_hover else (0, 120, 65), confirm_btn, border_radius=8)
+            draw_text("ESTABLISH GUILD", FONT_SMALL, WHITE, center_x, confirm_btn.centery, screen)
+
+            cancel_btn = pygame.Rect(center_x - 120, SCREEN_HEIGHT // 2 + 160, 240, 35)
+            can_hover = cancel_btn.collidepoint(mouse_pos)
+            pygame.draw.rect(screen, BUTTON_HOVER_COLOR if can_hover else BUTTON_COLOR, cancel_btn, border_radius=8)
+            draw_text("Cancel", FONT_SMALL, WHITE, center_x, cancel_btn.centery, screen)
+
+        if toast_msg and now - toast_time < 3500:
+            tb = pygame.Rect(center_x - 250, SCREEN_HEIGHT - 110, 500, 34)
+            pygame.draw.rect(screen, (15, 20, 32), tb, border_radius=6)
+            pygame.draw.rect(screen, toast_color, tb, 2, border_radius=6)
+            draw_text(toast_msg, FONT_SMALL, toast_color, center_x, tb.centery, screen)
+
+        b_hover = back_btn.collidepoint(mouse_pos)
+        pygame.draw.rect(screen, BUTTON_HOVER_COLOR if b_hover else BUTTON_COLOR, back_btn, border_radius=10)
+        draw_text("Back to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
+
         megahack.draw(screen)
         pygame.display.flip()
         clock.tick(int(FPS * state.GAME_SPEED))

@@ -127,6 +127,8 @@ def playtest_level(screen, grid_data, grid_w, grid_h, cell_size):
                     pu = PowerUp((sx, sy), "coins"); all_sprites.add(pu); powerups.add(pu)
                 elif val == 7:
                     pu = PowerUp((sx, sy), "speed_boost"); all_sprites.add(pu); powerups.add(pu)
+                elif val == 8:
+                    pu = PowerUp((sx, sy), "coins"); pu.power_type = "guild_block"; pu.color = (255, 215, 0); all_sprites.add(pu); powerups.add(pu)
 
         for b in bosses: 
             b.shoot(all_sprites, enemy_bullets, fire_rate=400)
@@ -298,6 +300,7 @@ def run_level_editor(screen):
         {"id": 5, "name": "Barrier", "color": CYAN},
         {"id": 6, "name": "Coins", "color": YELLOW},
         {"id": 7, "name": "SpeedPad", "color": WIN_GREEN},
+        {"id": 8, "name": "GuildBlock", "color": GOLD},
         {"id": 0, "name": "Eraser", "color": DARK_GRAY}
     ]
 
@@ -316,9 +319,9 @@ def run_level_editor(screen):
     
     msg, msg_timer = "", 0
 
-    tool_w = 72
+    tool_w = 64
     tool_h = 70
-    tool_gap = 6
+    tool_gap = 5
     tool_start_x = 115
 
     max_camera_y = (grid_h * cell_size) - SCREEN_HEIGHT + 150
@@ -470,6 +473,10 @@ def run_level_editor(screen):
                         pygame.draw.circle(screen, (200, 180, 0), r.center, cell_size//6)
                     elif val == 7:
                         pygame.draw.polygon(screen, WIN_GREEN, [(r.centerx, r.top+12), (r.right-12, r.bottom-12), (r.left+12, r.bottom-12)])
+                    elif val == 8:
+                        pygame.draw.rect(screen, (255, 215, 0), r.inflate(-6, -6), border_radius=6)
+                        pygame.draw.rect(screen, WHITE, r.inflate(-10, -10), 2, border_radius=4)
+                        ui.draw_text("G", FONT_SMALL, (10, 10, 10), r.centerx, r.centery, screen)
 
         # Minimap Scrollbar
         track_x = offset_x + grid_w * cell_size + 15

@@ -16,6 +16,7 @@ import megahack
 import lan_integration
 import sound_manager
 import account
+import guild
 
 try:
     with open(os.path.join(BUNDLE_DIR, "assets", "chatter.json"), "r") as f:
@@ -237,9 +238,15 @@ def spinoff_game_loop():
                         the_boss.shoot(all_sprites, enemy_bullets, 600)
 
                 for b in list(player_bullets):
-                    for ast in pygame.sprite.spritecollide(b, asteroids, True): 
+                    for ast in pygame.sprite.spritecollide(b, asteroids, True):
                         b.kill()
                         all_sprites.add(Explosion(ast.rect.center, size="small"))
+                        if hasattr(ast, "is_void") and ast.is_void:
+                            for _ in range(2):
+                                small_ast = Asteroid(0.5)
+                                small_ast.rect.center = ast.rect.center
+                                all_sprites.add(small_ast)
+                                asteroids.add(small_ast)
                     for drn in pygame.sprite.spritecollide(b, drones, True): 
                         b.kill()
                         all_sprites.add(Explosion(drn.rect.center, size="medium"))
@@ -300,6 +307,8 @@ def spinoff_game_loop():
             if state.ACTIVE_HACKS.get("Show Hitboxes", False):
                 pygame.draw.rect(VIRTUAL_SURFACE, RED, sprite.rect, 2)
                 pygame.draw.circle(VIRTUAL_SURFACE, YELLOW, sprite.rect.center, 3)
+        
+        lan_integration.draw(VIRTUAL_SURFACE)
 
         if story_state == "DIALOGUE":
             title_rect = pygame.Rect(SCREEN_WIDTH // 2 - 250, 35, 500, 44)
@@ -577,6 +586,8 @@ def ultimate_boss_loop():
             if state.ACTIVE_HACKS.get("Show Hitboxes", False):
                 pygame.draw.rect(VIRTUAL_SURFACE, RED, sprite.rect, 2)
                 pygame.draw.circle(VIRTUAL_SURFACE, YELLOW, sprite.rect.center, 3)
+        
+        lan_integration.draw(VIRTUAL_SURFACE)
 
         if the_boss.alive():
             bar_w, bar_h = min(600, SCREEN_WIDTH - 80), 24
@@ -753,6 +764,9 @@ def game_loop(current_mode):
 
                 ui.draw_text(f"SECTOR {net_state.get('l', 1)}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, 22, VIRTUAL_SURFACE)
                 ui.draw_text(f"P1 Score: {net_state.get('p1', {}).get('s', 0)}", FONT_MEDIUM, PLAYER_COLORS[0], 25, 22, VIRTUAL_SURFACE, align="left")
+                my_guild = guild.get_player_guild(state.current_user)
+                if my_guild:
+                    ui.draw_text(f"GUILD: [{my_guild['tag']}] {my_guild['name']}", FONT_SMALL, YELLOW, 25, 45, VIRTUAL_SURFACE, align="left")
                 if "p2" in net_state:
                     ui.draw_text(f"P2 Score: {net_state['p2'].get('s', 0)}", FONT_MEDIUM, PLAYER_COLORS[1], SCREEN_WIDTH - 25, 22, VIRTUAL_SURFACE, align="right")
 
@@ -802,9 +816,17 @@ def game_loop(current_mode):
         sound_manager.play_music("battle_theme")
 
     # Host & Offline Setup
-    players = {1: Player(1, state.all_player_data["P1"]["selected_ship"])}
+    user = state.current_user if state.current_user else "Guest"
+    players = {1: Player(1, state.all_player_data.get(user, {}).get("selected_ship", "default_jet"))}
+    import guild
+    perks = guild.get_active_perks(user)
+    if "health" in perks: players[1].max_health += perks["health"]; players[1].health = players[1].max_health
+    if "damage" in perks: players[1].damage_mult = 1.0 + perks["damage"] if hasattr(players[1], "damage_mult") else 1.0 + perks["damage"]
     if "MULTI" in current_mode: 
-        players[2] = Player(2, state.all_player_data["P2"]["selected_ship"])
+        # P2 is usually a network client or a guest in local multi
+        players[2] = Player(2, state.all_player_data.get("Guest", {}).get("selected_ship", "default_jet"))
+        perks2 = guild.get_active_perks("Guest")
+        if "health" in perks2: players[2].max_health += perks2["health"]; players[2].health = players[2].max_health
     
     all_sprites = pygame.sprite.Group()
     asteroids = pygame.sprite.Group()
@@ -1009,8 +1031,7 @@ def game_loop(current_mode):
                             p.shoot_delay = int(p.shoot_delay / p_data["fire_rate_multiplier"])
 
             if not BOSS_MODE_ACTIVE and running:
-                state.score_p1 = players[1].score
-                state.score_p2 = players[2].score if 2 in players else 0
+
                 max_score = max([p.score for p in players.values()])
                 if max_score >= SCORE_TO_WIN: 
                     state.win_status = True
@@ -1029,8 +1050,7 @@ def game_loop(current_mode):
                 "bo": {"x": boss.rect.x, "y": boss.rect.y, "h": boss.health, "m": boss.max_health} if boss else None,
                 "l": state.level, 
                 "win": state.win_status if not running else None,
-                "p1": {"s": state.score_p1}, 
-                "p2": {"s": state.score_p2}
+
             }
             if current_mode == "HOST_CLOUD":
                 try: 
@@ -1084,6 +1104,8 @@ def game_loop(current_mode):
             if state.ACTIVE_HACKS.get("Show Hitboxes", False):
                 pygame.draw.rect(VIRTUAL_SURFACE, RED, sprite.rect, 2)
                 pygame.draw.circle(VIRTUAL_SURFACE, YELLOW, sprite.rect.center, 3)
+        
+        lan_integration.draw(VIRTUAL_SURFACE)
 
         if boss:
             bar_w, bar_h = 360, 20
@@ -1103,6 +1125,9 @@ def game_loop(current_mode):
         ui.draw_text(f"SECTOR {state.level}", FONT_MEDIUM, YELLOW, SCREEN_WIDTH // 2, 22, VIRTUAL_SURFACE)
         if 1 in players:
             ui.draw_text(f"P1 Score: {players[1].score}", FONT_MEDIUM, PLAYER_COLORS[0], 25, 22, VIRTUAL_SURFACE, align="left")
+            my_guild = guild.get_player_guild(state.current_user)
+            if my_guild:
+                ui.draw_text(f"GUILD: [{my_guild['tag']}] {my_guild['name']}", FONT_SMALL, YELLOW, 25, 45, VIRTUAL_SURFACE, align="left")
             if getattr(state, "PLAYER_HEALTH_MODE", False) and hasattr(players[1], 'health'):
                 ui.draw_text(f"HP: {players[1].health}/{players[1].max_health}", FONT_SMALL, (50, 255, 50), 25, 45, VIRTUAL_SURFACE, align="left")
         if 2 in players:
@@ -1203,6 +1228,7 @@ def main():
     state.load_audio_config()
     state.load_admin_config()
     state.reload_mods()
+    guild.init_guilds()
     sound_manager.SoundManager.get_instance()
     sound_manager.play_music("menu_theme")
     
@@ -1227,9 +1253,23 @@ def main():
                 if state.game_mode == "LAN_JOIN": 
                     ui.show_instructions_screen(SCREEN, CLOCK, state.game_mode)
                     state.game_state = "PLAYING"
+            elif action == "GLOBAL_SERVER_LIST":
+                res = ui.show_global_server_list(SCREEN, CLOCK)
+                if res == "JOIN_CLOUD":
+                    state.game_mode = "JOIN_CLOUD"
+                    ui.show_instructions_screen(SCREEN, CLOCK, state.game_mode)
+                    state.game_state = "PLAYING"
+                elif res == "QUIT_PROGRAM":
+                    break
             elif action == "HOST_CLOUD":
                 network.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 network.udp_sock.setblocking(False)
+                
+                # Register server with Global Master
+                server_name = f"{state.current_user or 'Guest'}'s Galactic Server"
+                local_ip = network.get_local_ip()
+                network.register_server(server_name, local_ip, network.NETWORK_PORT)
+                
                 state.game_mode = "HOST_CLOUD"
                 ui.show_instructions_screen(SCREEN, CLOCK, state.game_mode)
                 state.game_state = "PLAYING"
@@ -1250,6 +1290,12 @@ def main():
                 ui.show_ship_selection_screen(SCREEN, CLOCK, "P2")
             elif action == "SHIP_STOP":
                 ui.show_ship_stop_screen(SCREEN, CLOCK)
+            elif action == "GUILD_SCREEN":
+                res = ui.show_guild_screen(SCREEN, CLOCK)
+                if res == "GUILD_CHAT":
+                    ui.show_guild_chat(SCREEN, CLOCK)
+                elif res == "QUIT_PROGRAM":
+                    break
             elif action in ["GAME_SETTINGS", "AUDIO_SETTINGS"]:
                 ui.show_settings_screen(SCREEN, CLOCK)
 
@@ -1278,6 +1324,8 @@ def main():
                         break
                 else:
                     ui.show_admin_options(SCREEN, CLOCK)
+            elif action == "PILOT_PROFILE":
+                ui.show_pilot_profile(SCREEN, CLOCK)
             elif action == "ACCOUNT_SCREEN":
                 ui.show_account_screen(SCREEN, CLOCK)
             elif action == "ENGINE_ROOM":

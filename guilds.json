@@ -1,0 +1,67 @@
+[
+    {
+        "name": "Solar Vanguard",
+        "tag": "SOLAR",
+        "description": "Elite frontier pilots dedicated to guarding inner colonies.",
+        "leader": "Commander Vex",
+        "level": 5,
+        "xp": 24000,
+        "bank_credits": 4500,
+        "members": [
+            {
+                "username": "Commander Vex",
+                "rank": "Leader",
+                "contributions": 5000
+            },
+            {
+                "username": "Lyra",
+                "rank": "Officer",
+                "contributions": 3500
+            },
+            {
+                "username": "Kael",
+                "rank": "Member",
+                "contributions": 1200
+            },
+            {
+                "username": "admin",
+                "rank": "Member",
+                "contributions": 12000
+            }
+        ],
+        "perks": [
+            "Credit Bonus I",
+            "Hull Reinforcement I",
+            "Credit Bonus II",
+            "Shield Harmonics II",
+            "Hyperdrive Booster"
+        ]
+    },
+    {
+        "name": "Nebula Syndicate",
+        "tag": "VOID",
+        "description": "Interstellar corsairs and smugglers navigating uncharted hyperspace lanes.",
+        "leader": "Shadow Corsair",
+        "level": 6,
+        "xp": 27500,
+        "bank_credits": 6700,
+        "members": [
+            {
+                "username": "Shadow Corsair",
+                "rank": "Leader",
+                "contributions": 4000
+            },
+            {
+                "username": "Nyx",
+                "rank": "Officer",
+                "contributions": 2100
+            }
+        ],
+        "perks": [
+            "Blaster Overcharge I",
+            "Credit Bonus II",
+            "Shield Harmonics II",
+            "Hyperdrive Booster"
+        ]
+    }
+]

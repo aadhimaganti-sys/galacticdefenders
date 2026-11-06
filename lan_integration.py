@@ -41,16 +41,24 @@ class LANIntegration:
 
     def connect_to_server(self, server_info):
         try:
+            import network
+            import state
+            
+            # Set up UDP socket for game state (matching network.py logic)
+            network.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            network.udp_sock.setblocking(False)
+            network.network_target = (server_info['ip'], server_info['port'])
+            state.game_mode = "LAN_JOIN"
+            
+            # TCP socket for lobby/chat/guilds
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((server_info['ip'], server_info['port']))
             
-            # Use a default name or from state if available
             name = "Pilot_" + str(int(time.time()))[-4:]
             join_msg = json.dumps({"type": "JOIN", "name": name})
             self.socket.sendall(join_msg.encode('utf-8'))
             
             self.mode = "CONNECTED"
-            # Start listener thread
             self.net_thread = threading.Thread(target=self._listen, daemon=True)
             self.net_thread.start()
         except Exception as e:
