@@ -56,6 +56,20 @@ def draw_stars(surface):
         c = s[3] if s[2] > 2.5 else (max(0, s[3][0]-100), max(0, s[3][1]-100), max(0, s[3][2]-100))
         pygame.draw.circle(surface, c, (int(s[0]), int(s[1])), int(s[2]))
 
+def resolve_player_key(player_id_str):
+    """Find a player's data key, falling back to the current user or Guest."""
+    requested = str(player_id_str)
+    if requested in state.all_player_data:
+        return requested
+
+    for key in state.all_player_data:
+        if key.lower() == requested.lower():
+            return key
+
+    fallback = state.current_user if state.current_user else "Guest"
+    state.get_player_data(fallback)
+    return fallback
+
 def draw_scrollable_menu(screen, options, offset, mouse_pos, title, font_t, color_t, y_t, currency=None):
     screen.fill(BLACK)
     draw_stars(screen)
@@ -127,8 +141,10 @@ def show_pilot_profile(screen, clock):
 
 
 def show_home_screen(screen, clock):
-    selected_p1 = state.SHIP_TYPES.get(state.all_player_data[state.current_user if state.current_user else "Guest"]["selected_ship"], BASE_SHIP_TYPES["default_jet"])["name"]
-    credits_p1 = state.all_player_data[state.current_user if state.current_user else "Guest"]["credits"]
+    current_user = state.current_user if state.current_user else "Guest"
+    player_data = state.get_player_data(current_user)
+    selected_p1 = state.SHIP_TYPES.get(player_data.get("selected_ship", "default_jet"), BASE_SHIP_TYPES["default_jet"])["name"]
+    credits_p1 = player_data.get("credits", 0)
     
     current_user_display = state.current_user if state.current_user else "P1 (Guest)"
     is_adm = state.current_user and account.is_admin(state.current_user)
@@ -148,14 +164,13 @@ def show_home_screen(screen, clock):
     col2_options = [
         {"text": "🚀 Pilot Profile", "action": "PILOT_PROFILE", "color": (100, 150, 200)},
         {"text": "👤 Account / Login", "action": "ACCOUNT_SCREEN", "color": (50, 70, 110)},
-        {"text": "🚀 Pilot Profile", "action": "PILOT_PROFILE", "color": (100, 150, 255)},
         {"text": "Host LAN Game", "action": "HOST_LAN_MENU", "color": (40, 90, 130)},
         {"text": "Join LAN Game", "action": "JOIN_LAN_MENU", "color": (40, 90, 130)},
         {"text": "Host Global Server", "action": "HOST_CLOUD", "color": (100, 0, 150)},
         {"text": "Global Server Browser", "action": "GLOBAL_SERVER_LIST", "color": (100, 0, 150)},
         {"text": "Galactic Web Browser", "action": "WEB_BROWSER", "color": (0, 100, 100)},
-        {"text": "Store / Armory (P1)", "action": "STORE_P1", "color": (60, 110, 50)},
-        {"text": "Select Ship (P1)", "action": "SELECT_SHIP_P1", "color": (70, 90, 120)},
+        {"text": "Store / Armory", "action": "STORE_PLAYER", "color": (60, 110, 50)},
+        {"text": "Select Ship", "action": "SELECT_SHIP_PLAYER", "color": (70, 90, 120)},
         {"text": "The Ship Stop (Hire Crew)", "action": "SHIP_STOP", "color": (150, 80, 20)},
         {"text": "🛡️ Galactic Guilds", "action": "GUILD_SCREEN", "color": (140, 90, 20)},
         {"text": "🏆 Global Leaderboards", "action": "LEADERBOARDS", "color": (255, 215, 0)},
@@ -164,7 +179,7 @@ def show_home_screen(screen, clock):
         {"text": "Quit Game", "action": "QUIT_PROGRAM", "color": (120, 30, 30)},
     ]
 
-    has_loader = "power_modloader" in state.all_player_data[state.current_user if state.current_user else "Guest"].get("unlocked_powers", [])
+    has_loader = "power_modloader" in player_data.get("unlocked_powers", [])
     if has_loader:
         col2_options.insert(-2, {"text": "Datapack Mod Loader", "action": "MOD_LOADER", "color": (110, 60, 120)})
 
@@ -201,16 +216,16 @@ def show_home_screen(screen, clock):
                 if title_rect.collidepoint(mouse_pos):
                     logo_clicks += 1
                     sound_manager.play_sfx("ui_click")
-                    if logo_clicks == 10:
+                    if logo_clicks >= 10:
                         sound_manager.play_sfx("victory")
                         state.SHIP_TYPES["the_ancient_one"] = {
                             "name": "The Ancient One", "desc": "An impossibly powerful relic from a forgotten era.", 
                             "speed": 25, "color": (255, 255, 255), "wing_color": (0, 0, 0), "start_blasters": 5
                         }
-                        if "the_ancient_one" not in state.all_player_data[state.current_user if state.current_user else "Guest"].setdefault("owned_ships", []):
-                            state.all_player_data[state.current_user if state.current_user else "Guest"]["owned_ships"].append("the_ancient_one")
-                        state.all_player_data[state.current_user if state.current_user else "Guest"]["selected_ship"] = "the_ancient_one"
-                        state.all_player_data[state.current_user if state.current_user else "Guest"]["credits"] += 10000000
+                        if "the_ancient_one" not in player_data.setdefault("owned_ships", []):
+                            player_data["owned_ships"].append("the_ancient_one")
+                        player_data["selected_ship"] = "the_ancient_one"
+                        player_data["credits"] = player_data.get("credits", 0) + 10000000
                         state.save_game_progress()
                         secret_unlocked_timer = 300
                 else:
@@ -273,10 +288,8 @@ def show_home_screen(screen, clock):
         clock.tick(int(FPS * state.GAME_SPEED))
 
 def show_store_screen(screen, clock, player_id_str):
-    player_id_key = str(player_id_str).upper()
-    if player_id_key not in state.all_player_data:
-        player_id_key = "P1"
-    player_data = state.all_player_data[player_id_key]
+    player_id_key = resolve_player_key(player_id_str)
+    player_data = state.get_player_data(player_id_key)
     player_data.setdefault("credits", 0)
     player_data.setdefault("owned_ships", ["default_jet"])
     player_data.setdefault("unlocked_powers", ["power_autoshield"])
@@ -350,10 +363,8 @@ def show_store_screen(screen, clock, player_id_str):
         clock.tick(int(FPS * state.GAME_SPEED))
 
 def show_ship_selection_screen(screen, clock, player_id_str):
-    player_id_key = str(player_id_str).upper()
-    if player_id_key not in state.all_player_data:
-        player_id_key = "P1"
-    player_data = state.all_player_data[player_id_key]
+    player_id_key = resolve_player_key(player_id_str)
+    player_data = state.get_player_data(player_id_key)
     player_data.setdefault("credits", 0)
     player_data.setdefault("owned_ships", ["default_jet"])
     player_data.setdefault("selected_ship", "default_jet")
@@ -704,9 +715,10 @@ def show_account_screen(screen, clock):
                     p = password_input.strip()
                     if account.login(u, p):
                         state.current_user = u
+                        player_data = state.get_player_data(u)
                         u_data = account.load_user_data(u)
                         if u_data:
-                            state.all_player_data[state.current_user if state.current_user else "Guest"].update(u_data)
+                            player_data.update(u_data)
                         status_msg = f"Successfully logged in as '{u}'!"
                         status_color = WIN_GREEN
                         status_time = pygame.time.get_ticks()
@@ -720,6 +732,8 @@ def show_account_screen(screen, clock):
                     p = password_input.strip()
                     if account.register(u, p):
                         state.current_user = u
+                        state.get_player_data(u)
+                        state.save_game_progress()
                         is_adm = account.is_admin(u)
                         tag = " (Primary Admin)" if is_adm else ""
                         status_msg = f"Registered & logged in as '{u}'{tag}!"
@@ -733,6 +747,7 @@ def show_account_screen(screen, clock):
                     sound_manager.play_sfx("ui_click")
                     state.current_user = None
                     account.set_active_session(None)
+                    state.get_player_data("Guest")
                     status_msg = "Logged out."
                     status_color = YELLOW
                     status_time = pygame.time.get_ticks()
@@ -750,9 +765,10 @@ def show_account_screen(screen, clock):
                     p = password_input.strip()
                     if account.login(u, p):
                         state.current_user = u
+                        player_data = state.get_player_data(u)
                         u_data = account.load_user_data(u)
                         if u_data:
-                            state.all_player_data[state.current_user if state.current_user else "Guest"].update(u_data)
+                            player_data.update(u_data)
                         status_msg = f"Successfully logged in as '{u}'!"
                         status_color = WIN_GREEN
                         status_time = pygame.time.get_ticks()
@@ -948,7 +964,8 @@ def show_dev_console(screen, clock):
                         elif cmd in ["give_coins", "coins", "credits"]:
                             if args and args[0].lstrip("-").isdigit():
                                 amt = int(args[0])
-                                p1_data = state.all_player_data.setdefault("P1", {})
+                                user = state.current_user if state.current_user else "Guest"
+                                p1_data = state.all_player_data.setdefault(user, {})
                                 p1_data["credits"] = max(0, p1_data.get("credits", 0) + amt)
                                 state.save_game_progress()
                                 logs.append(f"[SUCCESS] Added {amt:,} credits to P1. New balance: {p1_data['credits']:,}")
@@ -1198,7 +1215,8 @@ def show_terminal_admin_panel(screen, clock):
             sound_manager.play_sfx("hack_toggle")
 
         elif num == 8:
-            p1 = state.all_player_data.setdefault("P1", {})
+            user = state.current_user if state.current_user else "Guest"
+            p1 = state.all_player_data.setdefault(user, {})
             p1["credits"] = p1.get("credits", 0) + 10000
             state.save_game_progress()
             logs.append(f"[SUCCESS] Added +10,000 credits to P1! Total: {p1['credits']:,}")
@@ -2912,6 +2930,7 @@ def show_ship_stop_screen(screen, clock):
 def show_guild_chat(screen, clock):
     import guild
     import state
+    import random
     
     running = True
     user = state.current_user if state.current_user else "Guest"
@@ -2924,25 +2943,51 @@ def show_guild_chat(screen, clock):
     guild_tag = player_guild["tag"]
     input_text = ""
     
+    # Simulated bot responses
+    bot_replies = [
+        "For the glory of the guild!",
+        "Anyone want to run some asteroid mines?",
+        "I just upgraded my blasters to Level 3!",
+        "Captain, we have incoming signals from Sector 7.",
+        "Does anyone know where to find the Ancient One ship?",
+        "More credits for the vault! Let's go!",
+        "Stay safe out there, pilots.",
+        "I'm seeing some weird energy spikes in the nebula.",
+        "Who's up for a boss raid?",
+        "I just found a rare power-up!"
+    ]
+    last_bot_time = 0
+    
     while running:
         screen.fill((10, 15, 25))
         header_rect = pygame.Rect(0, 0, SCREEN_WIDTH, 60)
         pygame.draw.rect(screen, (20, 30, 50), header_rect)
         pygame.draw.line(screen, CYAN, (0, 60), (SCREEN_WIDTH, 60), 2)
         draw_text(f"GUILD CHAT: [{guild_tag}] {player_guild['name']}", FONT_MEDIUM, WHITE, SCREEN_WIDTH // 2, 30, screen)
+        
         chat_box = pygame.Rect(50, 80, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 200)
         pygame.draw.rect(screen, (15, 20, 35), chat_box, border_radius=10)
         pygame.draw.rect(screen, (40, 50, 70), chat_box, 2, border_radius=10)
+        
         messages = guild.get_guild_messages(guild_tag)
         for i, msg in enumerate(messages[-15:]):
             y_pos = chat_box.top + 20 + i * 30
             user_col = CYAN if msg["username"] == user else YELLOW
             draw_text(f"{msg['username']}: {msg['message']}", FONT_SMALL, user_col, chat_box.left + 20, y_pos, screen, align="left")
+        
         input_rect = pygame.Rect(50, SCREEN_HEIGHT - 100, SCREEN_WIDTH - 100, 50)
         pygame.draw.rect(screen, (20, 30, 50), input_rect, border_radius=10)
         pygame.draw.rect(screen, CYAN, input_rect, 2, border_radius=10)
         draw_text(f"Message: {input_text}_", FONT_SMALL, WHITE, input_rect.centerx, input_rect.centery, screen)
         draw_text("[ESC] Back to Guilds", FONT_SMALL, LIGHT_GRAY, SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30, screen)
+        
+        now = pygame.time.get_ticks()
+        if now - last_bot_time > random.randint(5000, 15000):
+            bot_user = random.choice(player_guild.get("members", []))["username"] if player_guild.get("members") else "System"
+            bot_msg = random.choice(bot_replies)
+            guild.send_guild_message(guild_tag, bot_user, bot_msg)
+            last_bot_time = now
+            
         for event in pygame.event.get():
             if event.type == pygame.QUIT: return "QUIT_PROGRAM"
             if event.type == pygame.KEYDOWN:
@@ -2951,8 +2996,10 @@ def show_guild_chat(screen, clock):
                     if input_text.strip():
                         guild.send_guild_message(guild_tag, user, input_text)
                         input_text = ""
+                        sound_manager.play_sfx("ui_click", 0.5)
                 elif event.key == pygame.K_BACKSPACE: input_text = input_text[:-1]
                 elif event.unicode.isprintable(): input_text += event.unicode
+        
         pygame.display.flip()
         clock.tick(60)
     return "GUILD_SCREEN"
@@ -3290,6 +3337,55 @@ def show_guild_screen(screen, clock):
         pygame.draw.rect(screen, BUTTON_HOVER_COLOR if b_hover else BUTTON_COLOR, back_btn, border_radius=10)
         draw_text("Back to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
 
+        megahack.draw(screen)
+        pygame.display.flip()
+        clock.tick(int(FPS * state.GAME_SPEED))
+
+def show_leaderboards(screen, clock):
+    center_x = SCREEN_WIDTH // 2
+    back_btn = pygame.Rect(center_x - 100, SCREEN_HEIGHT - 60, 200, 50)
+    
+    leaderboards = [
+        {"name": "AcePilot", "score": 150000, "ship": "Shadow Wraith"},
+        {"name": "StarLord", "score": 120000, "ship": "Ancient One"},
+        {"name": "Nebula", "score": 90000, "ship": "Default Jet"},
+        {"name": "VoidWalker", "score": 75000, "ship": "Void Runner"},
+        {"name": "Comet", "score": 50000, "ship": "Plasma Wing"},
+    ]
+    
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: return "QUIT_PROGRAM"
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if back_btn.collidepoint(mouse_pos):
+                    sound_manager.play_sfx("ui_click")
+                    return "HOME"
+            if event.type == pygame.KEYDOWN and event.key in [pygame.K_ESCAPE, pygame.K_h]:
+                sound_manager.play_sfx("ui_click")
+                return "HOME"
+        
+        screen.fill(BLACK)
+        draw_stars(screen)
+        
+        draw_text("🏆 GLOBAL LEADERBOARDS", FONT_LARGE, YELLOW, center_x, 50, screen, drop_shadow=True)
+        
+        draw_text("Rank", FONT_SMALL, CYAN, center_x - 200, 120, screen, align="left")
+        draw_text("Pilot", FONT_SMALL, CYAN, center_x - 50, 120, screen, align="left")
+        draw_text("Score", FONT_SMALL, CYAN, center_x + 100, 120, screen, align="left")
+        draw_text("Ship", FONT_SMALL, CYAN, center_x + 250, 120, screen, align="left")
+        pygame.draw.line(screen, CYAN, (center_x - 220, 135), (center_x + 320, 135), 2)
+        
+        for i, entry in enumerate(leaderboards):
+            y = 160 + i * 40
+            draw_text(f"#{i+1}", FONT_SMALL, WHITE, center_x - 200, y, screen, align="left")
+            draw_text(entry["name"], FONT_SMALL, WHITE, center_x - 50, y, screen, align="left")
+            draw_text(f"{entry['score']:,}", FONT_SMALL, YELLOW, center_x + 100, y, screen, align="left")
+            draw_text(entry["ship"], FONT_SMALL, LIGHT_GRAY, center_x + 250, y, screen, align="left")
+            
+        pygame.draw.rect(screen, BUTTON_COLOR if not back_btn.collidepoint(mouse_pos) else BUTTON_HOVER_COLOR, back_btn, border_radius=10)
+        draw_text("Back to Home", FONT_MEDIUM, WHITE, back_btn.centerx, back_btn.centery, screen)
+        
         megahack.draw(screen)
         pygame.display.flip()
         clock.tick(int(FPS * state.GAME_SPEED))

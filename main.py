@@ -102,7 +102,8 @@ SCORE_TO_WIN = 5000
 
 def spinoff_game_loop():
     sound_manager.play_music("story_theme")
-    player = Player(player_id=1, ship_type_key=state.all_player_data["P1"]["selected_ship"])
+    user = state.current_user if state.current_user else "Guest"
+    player = Player(player_id=1, ship_type_key=state.all_player_data.get(user, {}).get("selected_ship", "default_jet"))
     all_sprites = pygame.sprite.Group()
     player_bullets = pygame.sprite.Group()
     enemy_bullets = pygame.sprite.Group()
@@ -795,16 +796,13 @@ def game_loop(current_mode):
                 if getattr(state, "SHIP_VIEW_MODE", False):
                     interior.update_and_draw_interior(SCREEN)
                     if getattr(state, "astronaut_near_window", False):
-                        for sprite in all_sprites:
+                        for sprite in client_cache.values():
                             if isinstance(sprite, Player) and getattr(sprite, "player_id", 1) == 1:
-                                cw, ch = SCREEN.get_width(), SCREEN.get_height()
+                                ch = SCREEN.get_height()
                                 ship_img = pygame.transform.scale(sprite.image, (int(sprite.rect.width * 1.5), int(sprite.rect.height * 1.5)))
                                 px = sprite.rect.centerx - ship_img.get_width() // 2
                                 py = int(ch * 0.6) - ship_img.get_height() // 2
                                 SCREEN.blit(ship_img, (px, py))
-                        px = sprite.rect.centerx - ship_img.get_width() // 2
-                        py = int(ch * 0.6) - ship_img.get_height() // 2 # Half sticking out above the console
-                        SCREEN.blit(ship_img, (px, py))
                 megahack.draw(SCREEN)
                 pygame.display.flip()
                 
@@ -818,7 +816,6 @@ def game_loop(current_mode):
     # Host & Offline Setup
     user = state.current_user if state.current_user else "Guest"
     players = {1: Player(1, state.all_player_data.get(user, {}).get("selected_ship", "default_jet"))}
-    import guild
     perks = guild.get_active_perks(user)
     if "health" in perks: players[1].max_health += perks["health"]; players[1].health = players[1].max_health
     if "damage" in perks: players[1].damage_mult = 1.0 + perks["damage"] if hasattr(players[1], "damage_mult") else 1.0 + perks["damage"]
@@ -1054,7 +1051,7 @@ def game_loop(current_mode):
             }
             if current_mode == "HOST_CLOUD":
                 try: 
-                    network.udp_sock.sendto(json.dumps({"action": "HOST_LOBBY", "lobby": network.GLOBAL_LOBBY_CODE, "state": payload}).encode(), (network.CLOUD_SERVER_IP, network.NETWORK_PORT))
+                    network.udp_sock.sendto(json.dumps({"action": "HOST_LOBBY", "lobby": network.GLOBAL_LOBBY_CODE, "state": payload}).encode(), (network.CLOUD_MASTER_IP, network.NETWORK_PORT))
                 except Exception: 
                     pass
             else:
@@ -1280,14 +1277,10 @@ def main():
                     state.game_state = "PLAYING"
             elif action == "WEB_BROWSER": 
                 ui.show_web_browser_screen(SCREEN, CLOCK)
-            elif action == "STORE_P1": 
-                ui.show_store_screen(SCREEN, CLOCK, "P1")
-            elif action == "SELECT_SHIP_P1": 
-                ui.show_ship_selection_screen(SCREEN, CLOCK, "P1")
-            elif action == "STORE_P2": 
-                ui.show_store_screen(SCREEN, CLOCK, "P2")
-            elif action == "SELECT_SHIP_P2": 
-                ui.show_ship_selection_screen(SCREEN, CLOCK, "P2")
+            elif action == "STORE_PLAYER": 
+                ui.show_store_screen(SCREEN, CLOCK, state.current_user if state.current_user else "Guest")
+            elif action == "SELECT_SHIP_PLAYER": 
+                ui.show_ship_selection_screen(SCREEN, CLOCK, state.current_user if state.current_user else "Guest")
             elif action == "SHIP_STOP":
                 ui.show_ship_stop_screen(SCREEN, CLOCK)
             elif action == "GUILD_SCREEN":
@@ -1326,6 +1319,8 @@ def main():
                     ui.show_admin_options(SCREEN, CLOCK)
             elif action == "PILOT_PROFILE":
                 ui.show_pilot_profile(SCREEN, CLOCK)
+            elif action == "LEADERBOARDS":
+                ui.show_leaderboards(SCREEN, CLOCK)
             elif action == "ACCOUNT_SCREEN":
                 ui.show_account_screen(SCREEN, CLOCK)
             elif action == "ENGINE_ROOM":

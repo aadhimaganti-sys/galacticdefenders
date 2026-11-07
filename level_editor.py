@@ -50,7 +50,8 @@ def playtest_level(screen, grid_data, grid_w, grid_h, cell_size):
     temp_cheat = state.CHEAT_MENU_VISIBLE
     state.CHEAT_MENU_VISIBLE = False
 
-    player = Player(player_id=1, ship_type_key=state.all_player_data["P1"]["selected_ship"])
+    user = state.current_user if state.current_user else "Guest"
+    player = Player(player_id=1, ship_type_key=state.all_player_data.get(user, {}).get("selected_ship", "default_jet"))
     player.rect.centerx = SCREEN_WIDTH // 2
     player.rect.bottom = SCREEN_HEIGHT - 50
 
@@ -155,7 +156,8 @@ def playtest_level(screen, grid_data, grid_w, grid_h, cell_size):
             elif pu.power_type == "shield": 
                 player.activate_shield()
             elif pu.power_type == "coins": 
-                state.all_player_data["P1"]["credits"] += 250
+                user = state.current_user if state.current_user else "Guest"
+                state.all_player_data.setdefault(user, {})["credits"] = state.all_player_data.get(user, {}).get("credits", 0) + 250
                 state.save_game_progress()
                 sound_manager.play_sfx("powerup_collect")
             elif pu.power_type == "speed_boost":

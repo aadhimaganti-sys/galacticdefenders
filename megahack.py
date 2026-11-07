@@ -22,16 +22,21 @@ def draw_text(text, font, color, x, y, surface, align="center"):
     return rect
 
 def apply_instant_hacks(hack):
+    data = state.get_player_data()
+
     if hack == "Infinite Credits":
-        state.all_player_data["P1"]["credits"] = 999999
+        data["credits"] = 999999
     elif hack == "Unlock All Ships":
+        owned = data.setdefault("owned_ships", [])
         for k in state.SHIP_TYPES:
-            if k not in state.all_player_data["P1"]["owned_ships"]:
-                state.all_player_data["P1"]["owned_ships"].append(k)
+            if k not in owned:
+                owned.append(k)
     elif hack == "Unlock All Helpers":
+        unlocked = data.setdefault("unlocked_powers", [])
         for k in state.HELPER_TYPES:
-            if k not in state.all_player_data["P1"]["unlocked_powers"]:
-                state.all_player_data["P1"]["unlocked_powers"].append(k)
+            if k not in unlocked:
+                unlocked.append(k)
+    state.save_game_progress()
 
 def handle_event(event):
     """GLOBAL HOOK: Call this first in EVERY event loop!"""
@@ -79,7 +84,8 @@ def handle_event(event):
                     state.ACTIVE_HACKS[hack] = True
                 else:
                     state.ACTIVE_HACKS[hack] = not state.ACTIVE_HACKS[hack]
-                    apply_instant_hacks(hack)
+                    if state.ACTIVE_HACKS[hack]:
+                        apply_instant_hacks(hack)
                 sound_manager.play_sfx("hack_toggle")
                 return True
         return True 

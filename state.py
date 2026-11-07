@@ -1,8 +1,9 @@
 import json
+import copy
+import os
 
 # Current logged-in user (set by login_flow)
 current_user = None
-import os
 from settings import *
 
 # --- Gameplay State ---
@@ -81,6 +82,20 @@ DEFAULT_PLAYER_DATA = {
     "pilot_xp": 0,
     "stat_points": 0,
 }
+
+def new_player_data():
+    """Return an independent copy of the default player profile."""
+    return copy.deepcopy(DEFAULT_PLAYER_DATA)
+
+def get_player_data(username=None):
+    """Return a player's data, creating it with defaults when missing."""
+    user = username if username else (current_user if current_user else "Guest")
+    if user not in all_player_data:
+        all_player_data[user] = new_player_data()
+    else:
+        for key, value in DEFAULT_PLAYER_DATA.items():
+            all_player_data[user].setdefault(key, copy.deepcopy(value))
+    return all_player_data[user]
 
 # --- General & Audio Settings (Player Preferences) ---
 audio_settings = {
@@ -208,9 +223,9 @@ def reload_mods():
                                 SHIP_TYPES[k] = d
                                 if d.get("unlocked_by_default", False) or d.get("cost", 0) == 0:
                                     user = current_user if current_user else "Guest"
-                                    if user not in all_player_data: all_player_data[user] = dict(DEFAULT_PLAYER_DATA)
-                                    if k not in all_player_data[user].get("owned_ships", []):
-                                        all_player_data[user].setdefault("owned_ships", ["default_jet"]).append(k)
+                                    player_data = get_player_data(user)
+                                    if k not in player_data.get("owned_ships", []):
+                                        player_data.setdefault("owned_ships", ["default_jet"]).append(k)
                         if "helpers" in ext:
                             for k, d in ext["helpers"].items():
                                 d["name"] = d.get("name", k.replace("_", " ").title())
@@ -220,9 +235,9 @@ def reload_mods():
                                 HELPER_TYPES[k] = d
                                 if d.get("unlocked_by_default", False) or d.get("cost", 0) == 0:
                                     user = current_user if current_user else "Guest"
-                                    if user not in all_player_data: all_player_data[user] = dict(DEFAULT_PLAYER_DATA)
-                                    if k not in all_player_data[user].get("unlocked_powers", []):
-                                        all_player_data[user].setdefault("unlocked_powers", ["power_autoshield"]).append(k)
+                                    player_data = get_player_data(user)
+                                    if k not in player_data.get("unlocked_powers", []):
+                                        player_data.setdefault("unlocked_powers", ["power_autoshield"]).append(k)
                         if "powerups" in ext:
                             for k, d in ext["powerups"].items():
                                 d["name"] = d.get("name", k.replace("_", " ").title())
@@ -240,15 +255,20 @@ def load_game_progress():
         active_session = account.get_active_session()
         if active_session:
             current_user = active_session
-        
+
         user = current_user if current_user else "Guest"
-        all_player_data[user] = dict(DEFAULT_PLAYER_DATA)
-        
+        all_player_data[user] = new_player_data()
+
         if current_user:
             u_data = account.load_user_data(current_user)
             if u_data:
                 all_player_data[user].update(u_data)
-    except Exception: 
+
+        # Guest data is used for local co-op and when nobody is logged in,
+        # so make sure it always exists.
+        if "Guest" not in all_player_data:
+            all_player_data["Guest"] = new_player_data()
+    except Exception:
         pass
 def save_game_progress():
     try:

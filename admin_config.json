@@ -3,6 +3,6 @@
     "default_starting_credits": 0,
     "global_game_speed": 2.0,
     "force_god_mode": false,
-    "ship_view_mode": false,
+    "ship_view_mode": true,
     "player_health_mode": false
 }
