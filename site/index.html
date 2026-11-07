@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101619">
+  <meta name="description" content="Download Galactic Defenders, a fast arcade space shooter for desktop.">
+  <title>Galactic Defenders | Starfighter arcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="#top" aria-label="Galactic Defenders home"><span class="mark" aria-hidden="true">GD</span><span>GALACTIC<br>DEFENDERS</span></a>
+    <nav aria-label="Main navigation">
+      <a href="#downloads">Downloads</a><a href="#how-to-play">How to play</a>
+      <a href="https://github.com/aadhimaganti-sys/galacticdefenders" target="_blank" rel="noreferrer">Source code <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <canvas class="flight-scene" aria-hidden="true"></canvas>
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="live-dot"></span> DESKTOP ARCADE / BUILD 02.2</p>
+        <h1 id="hero-title">DEFEND<br>THE <span>GALAXY.</span></h1>
+        <p class="hero-description">Take the controls. Fly into the asteroid field. Make it home.</p>
+        <div class="hero-actions"><a class="button button-bright" href="#downloads">Choose your platform <span aria-hidden="true">↓</span></a><a class="text-action" href="https://github.com/aadhimaganti-sys/galacticdefenders" target="_blank" rel="noreferrer">View source <span aria-hidden="true">↗</span></a></div>
+        <p class="hero-note">Free to play · Windows, Linux &amp; macOS</p>
+      </div>
+      <div class="scene-caption" aria-hidden="true"><span>SECTOR 07 / OUTER RIM</span><span>FLIGHT SYSTEMS ONLINE</span></div>
+    </section>
+    <section class="downloads section-wrap" id="downloads" aria-labelledby="downloads-title">
+      <div class="section-heading"><div><p class="eyebrow dark-eyebrow">PICK YOUR FLIGHT DECK</p><h2 id="downloads-title">Get in the cockpit.</h2></div><p class="build-note"><span class="build-dot"></span> Builds refresh automatically when main changes.</p></div>
+      <div class="download-list">
+        <article class="download-row" data-platform="linux"><div class="platform-index">01</div><div class="platform-name"><h3>Linux</h3><p>64-bit · x86_64</p></div><p class="platform-detail">Ubuntu, Debian and compatible distributions</p><a class="download-button" href="https://github.com/aadhimaganti-sys/galacticdefenders/releases/latest/download/GalacticDefenders-linux-x86_64.zip">Download <span aria-hidden="true">↓</span></a></article>
+        <article class="download-row" data-platform="windows"><div class="platform-index">02</div><div class="platform-name"><h3>Windows</h3><p>64-bit · x86_64</p></div><p class="platform-detail">Windows 10 or later</p><a class="download-button" href="https://github.com/aadhimaganti-sys/galacticdefenders/releases/latest/download/GalacticDefenders-windows-x86_64.zip">Download <span aria-hidden="true">↓</span></a></article>
+        <article class="download-row" data-platform="mac-arm"><div class="platform-index">03</div><div class="platform-name"><h3>macOS</h3><p>Apple silicon · ARM64</p></div><p class="platform-detail">For M-series Mac computers</p><a class="download-button" href="https://github.com/aadhimaganti-sys/galacticdefenders/releases/latest/download/GalacticDefenders-macos-apple-silicon.zip">Download <span aria-hidden="true">↓</span></a></article>
+        <article class="download-row" data-platform="mac-intel"><div class="platform-index">04</div><div class="platform-name"><h3>macOS</h3><p>Intel · x86_64</p></div><p class="platform-detail">For Intel-based Mac computers</p><a class="download-button" href="https://github.com/aadhimaganti-sys/galacticdefenders/releases/latest/download/GalacticDefenders-macos-intel.zip">Download <span aria-hidden="true">↓</span></a></article>
+      </div>
+      <p class="release-link">Looking for a previous build? <a href="https://github.com/aadhimaganti-sys/galacticdefenders/releases" target="_blank" rel="noreferrer">Browse all releases <span aria-hidden="true">↗</span></a></p>
+      <div class="launch-notes"><p><strong>WINDOWS</strong> Extract the ZIP and open <code>GalacticDefenders.exe</code>.</p><p><strong>LINUX</strong> Extract, then run <code>./GalacticDefenders</code> from that folder.</p><p><strong>macOS</strong> Extract and run <code>./GalacticDefenders</code> in Terminal. If blocked, allow it in Privacy &amp; Security.</p></div>
+    </section>
+    <section class="play-band" id="how-to-play" aria-labelledby="play-title">
+      <div class="play-inner">
+        <div class="play-intro"><p class="eyebrow">FLIGHT MANUAL / 001</p><h2 id="play-title">Boot up.<br>Blast off.</h2><p>Unzip the download and launch GalacticDefenders. The game opens in full screen.</p><a class="text-action light-action" href="https://github.com/aadhimaganti-sys/galacticdefenders#run-from-source" target="_blank" rel="noreferrer">Run from source <span aria-hidden="true">↗</span></a></div>
+        <div class="control-panel" aria-label="Game controls"><div class="panel-label">FLIGHT CONTROLS <span>PLAYER 01</span></div><div class="control-row"><span class="key-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span class="control-description">Move ship</span></div><div class="control-row"><span class="key-group"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><span class="control-description">Alternate movement</span></div><div class="control-row"><span class="key-group"><kbd class="wide-key">SPACE</kbd></span><span class="control-description">Fire</span></div><div class="control-row"><span class="key-group"><kbd>P</kbd></span><span class="control-description">Toggle auto-pilot</span></div><div class="control-row"><span class="key-group"><kbd>ESC</kbd></span><span class="control-description">Return to menu</span></div></div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer"><a class="wordmark footer-mark" href="#top"><span class="mark" aria-hidden="true">GD</span><span>GALACTIC<br>DEFENDERS</span></a><p>Built for the long way home.</p><a href="https://github.com/aadhimaganti-sys/galacticdefenders" target="_blank" rel="noreferrer">Open on GitHub <span aria-hidden="true">↗</span></a></footer>
+</body>
+</html>
